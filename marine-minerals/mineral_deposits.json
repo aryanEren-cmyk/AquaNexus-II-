@@ -1,0 +1,52 @@
+[
+  {
+    "id": "ccz-nodules",
+    "region_name": "Clarion-Clipperton Zone",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": ["nickel", "copper", "manganese", "cobalt"],
+    "bounding_box": {"lat_min": 0, "lat_max": 23.5, "lon_min": -160, "lon_max": -115},
+    "depth_range_m": [3500, 6000],
+    "estimated_density": "high",
+    "notes": "Largest known nodule field by area and tonnage, located in the central Pacific Ocean"
+  },
+  {
+    "id": "cib-nodules",
+    "region_name": "Central Indian Ocean Basin",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": ["nickel", "copper", "manganese", "cobalt"],
+    "bounding_box": {"lat_min": -16, "lat_max": -10, "lon_min": 74, "lon_max": 79},
+    "depth_range_m": [3500, 6000],
+    "estimated_density": "moderate",
+    "notes": "Indian Ocean nodule field, smaller than CCZ but commercially notable"
+  },
+  {
+    "id": "mar-sulphides",
+    "region_name": "Mid-Atlantic Ridge",
+    "mineral_type": "polymetallic_sulphides",
+    "primary_metals": ["copper", "zinc", "gold", "silver"],
+    "bounding_box": {"lat_min": -10, "lat_max": 26, "lon_min": -46, "lon_max": -30},
+    "depth_range_m": [1500, 4000],
+    "estimated_density": "moderate",
+    "notes": "Hydrothermal vent-associated sulphide deposits along the mid-ocean ridge"
+  },
+  {
+    "id": "prime-crust-zone",
+    "region_name": "Pacific Prime Crust Zone",
+    "mineral_type": "cobalt_rich_ferromanganese_crusts",
+    "primary_metals": ["cobalt", "manganese", "nickel", "tellurium", "platinum"],
+    "bounding_box": {"lat_min": 0, "lat_max": 20, "lon_min": 150, "lon_max": 180},
+    "depth_range_m": [400, 7000],
+    "estimated_density": "high",
+    "notes": "Seamount/ridge crust deposits in the western-central Pacific, highest known crust tonnage"
+  },
+  {
+    "id": "cook-islands-nodules",
+    "region_name": "Cook Islands EEZ",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": ["cobalt", "manganese", "nickel"],
+    "bounding_box": {"lat_min": -22, "lat_max": -8, "lon_min": -166, "lon_max": -156},
+    "depth_range_m": [4000, 5500],
+    "estimated_density": "moderate",
+    "notes": "Nodule field within Cook Islands national jurisdiction, distinct from ABNJ zones"
+  }
+]
