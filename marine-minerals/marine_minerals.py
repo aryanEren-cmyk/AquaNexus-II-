@@ -55,21 +55,38 @@ def _matching_regions(lat, lon):
     return matches
 
 
-def _summarize_stations(stations):
+def _ocean_conditions_note(ocean_conditions):
+    """Build a short clause describing supplied ocean conditions, or '' if none given."""
+    if not ocean_conditions:
+        return ""
+    parts = []
+    if "temperature_c" in ocean_conditions:
+        parts.append(f"bottom temperature ~{ocean_conditions['temperature_c']}C")
+    if "salinity_psu" in ocean_conditions:
+        parts.append(f"salinity ~{ocean_conditions['salinity_psu']} PSU")
+    if "depth_m" in ocean_conditions:
+        parts.append(f"depth ~{ocean_conditions['depth_m']}m")
+    if not parts:
+        return ""
+    return f" Ocean conditions at this point: {', '.join(parts)}."
+
+
+def _summarize_stations(stations, ocean_conditions=None):
     avg_coverage = sum(s["seafloor_coverage_pct"] for s in stations) / len(stations)
     avg_total = sum(s["nodules_total_count"] for s in stations) / len(stations)
     avg_abundance_kg_m2 = (sum(s["total_nodule_mass_kg"] for s in stations) / len(stations)) * 4.0
     nearest = stations[0]
-    return (
+    base = (
         f"Verified seafloor data: {len(stations)} nearby sample station(s) from real "
         f"research cruises (SO268/1-2, GEOMAR/PANGAEA) show polymetallic nodules with "
         f"average seafloor coverage of {avg_coverage:.0f}%, roughly {avg_total:.0f} "
         f"nodules per sample, and mean abundance of {avg_abundance_kg_m2:.1f} kg/m2. "
         f"Nearest station is {nearest['distance_km']} km away."
     )
+    return base + _ocean_conditions_note(ocean_conditions)
 
 
-def _summarize_regions(regions):
+def _summarize_regions(regions, ocean_conditions=None):
     parts = []
     for r in regions:
         metals = ", ".join(r["primary_metals"])
@@ -78,16 +95,22 @@ def _summarize_regions(regions):
             f"{r['mineral_type'].replace('_', ' ')} (estimated density: {r['estimated_density']}). "
             f"Key metals of interest: {metals}. (Estimated region, not a direct measurement.)"
         )
-    return " ".join(parts)
+    base = " ".join(parts)
+    return base + _ocean_conditions_note(ocean_conditions)
 
 
-def get_mineral_insights(lat, lon, radius_km=50):
+def get_mineral_insights(lat, lon, radius_km=50, ocean_conditions=None):
     """
     Main entry point for the AI Agent.
 
     Args:
         lat, lon: query coordinates
         radius_km: search radius for real station matches (default 50km)
+        ocean_conditions: optional dict of environmental data for this location,
+            e.g. {"temperature_c": 2.1, "salinity_psu": 34.7, "depth_m": 4200}.
+            Intended to be supplied by the ARGO module (or the AI Agent after
+            calling it). When provided, it's woven into the summary text.
+            Safe to omit entirely - behavior is unchanged if not passed.
 
     Returns:
         {
@@ -103,7 +126,7 @@ def get_mineral_insights(lat, lon, radius_km=50):
             "query": {"lat": lat, "lon": lon, "radius_km": radius_km},
             "source": "verified_station",
             "deposits": stations,
-            "summary": _summarize_stations(stations),
+            "summary": _summarize_stations(stations, ocean_conditions),
         }
 
     regions = _matching_regions(lat, lon)
@@ -112,7 +135,7 @@ def get_mineral_insights(lat, lon, radius_km=50):
             "query": {"lat": lat, "lon": lon, "radius_km": radius_km},
             "source": "estimated_region",
             "deposits": regions,
-            "summary": _summarize_regions(regions),
+            "summary": _summarize_regions(regions, ocean_conditions),
         }
 
     return {
@@ -136,3 +159,11 @@ if __name__ == "__main__":
         result = get_mineral_insights(lat, lon)
         print("source:", result["source"])
         print("summary:", result["summary"])
+
+    print("\n--- With ocean_conditions supplied (simulating ARGO input) ---")
+    result = get_mineral_insights(
+        11.93, -117.02,
+        ocean_conditions={"temperature_c": 2.1, "salinity_psu": 34.7, "depth_m": 4200}
+    )
+    print("source:", result["source"])
+    print("summary:", result["summary"])
