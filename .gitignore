@@ -1,3 +1,4 @@
 .env
 argo/data/raw/*.nc
 argo/data/processed/*.nc
+argo/data/live/*.nc
