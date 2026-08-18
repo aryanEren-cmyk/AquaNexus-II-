@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaNexus — Ocean Intelligence Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --abyss-0:#050b14;
+  --abyss-1:#081422;
+  --abyss-2:#0c1c2e;
+  --panel:#0e2032;
+  --panel-hi:#13293e;
+  --line:#1c3348;
+  --line-soft:#152538;
+  --text:#e8f1f2;
+  --text-dim:#a9bcc9;
+  --text-mute:#7d96a8;
+  --cyan:#2dd4bf;
+  --cyan-dim:#1a8f82;
+  --coral:#ff6b4a;
+  --coral-dim:#c94a2f;
+  --gold:#e0b34d;
+  --gold-dim:#a9812e;
+  --violet:#8b7fd6;
+  --violet-dim:#6459a8;
+  --radius:10px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:
+    radial-gradient(ellipse 1200px 800px at 15% -10%, #0d2438 0%, transparent 60%),
+    radial-gradient(ellipse 1000px 900px at 100% 100%, #0a1d2e 0%, transparent 55%),
+    linear-gradient(180deg, var(--abyss-1) 0%, var(--abyss-0) 100%);
+  color:var(--text);
+  font-family:'Inter', sans-serif;
+  overflow:hidden;
+  position:relative;
+}
+/* caustic light texture */
+body::before{
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+  background-image:
+    repeating-linear-gradient(115deg, rgba(45,212,191,0.02) 0px, rgba(45,212,191,0.02) 2px, transparent 2px, transparent 60px),
+    repeating-linear-gradient(65deg, rgba(139,127,214,0.015) 0px, rgba(139,127,214,0.015) 2px, transparent 2px, transparent 80px);
+}
+.mono{font-family:'JetBrains Mono', monospace;}
+.display{font-family:'Space Grotesk', sans-serif;}
+
+/* ===== APP SHELL ===== */
+.app{display:grid; grid-template-columns:78px 1fr; grid-template-rows:64px 1fr; height:100vh; position:relative; z-index:1;}
+
+/* ---- Top bar ---- */
+.topbar{
+  grid-column:1/3; grid-row:1;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 22px;
+  border-bottom:1px solid var(--line-soft);
+  background:linear-gradient(180deg, rgba(10,22,36,0.9), rgba(10,22,36,0.6));
+  backdrop-filter:blur(6px);
+}
+.brand{display:flex; align-items:center; gap:12px;}
+.brand-mark{width:34px; height:34px; position:relative;}
+.brand-name{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:18px; letter-spacing:.3px;}
+.brand-name span{color:var(--cyan);}
+.brand-sub{font-size:10px; color:var(--text-mute); letter-spacing:1.5px; text-transform:uppercase; margin-top:-2px;}
+
+.top-right{display:flex; align-items:center; gap:26px;}
+.status-pill{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-dim); font-family:'JetBrains Mono',monospace;}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan);}
+.dot.pulse{animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
+
+.sonar-wrap{display:flex; align-items:center; gap:10px;}
+.sonar{width:34px; height:34px; border-radius:50%; border:1px solid var(--line); position:relative; overflow:hidden; background:radial-gradient(circle, #0a1a28 0%, #050d16 100%);}
+.sonar::after{
+  content:''; position:absolute; inset:0;
+  background:conic-gradient(from 0deg, rgba(45,212,191,0.8), transparent 40%);
+  animation:sweep 3s linear infinite;
+}
+.sonar::before{content:''; position:absolute; inset:8px; border:1px solid rgba(45,212,191,.25); border-radius:50%; z-index:2;}
+@keyframes sweep{to{transform:rotate(360deg);}}
+.depth-read{font-size:11px; color:var(--text-mute); line-height:1.3;}
+.depth-read b{color:var(--cyan); font-weight:600;}
+
+/* ---- Nav rail ---- */
+.navrail{
+  grid-column:1; grid-row:2;
+  border-right:1px solid var(--line-soft);
+  background:linear-gradient(180deg, rgba(8,18,30,.7), rgba(6,13,22,.9));
+  display:flex; flex-direction:column; align-items:center; padding:18px 0; gap:6px;
+}
+.navbtn{
+  width:52px; height:52px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; cursor:pointer; color:var(--text-mute); border:1px solid transparent; transition:.18s;
+  position:relative;
+}
+.navbtn svg{width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:1.6;}
+.navbtn .lbl{font-size:8.5px; letter-spacing:.3px; font-family:'JetBrains Mono',monospace;}
+.navbtn:hover{color:var(--text); background:rgba(255,255,255,.03);}
+.navbtn.active{color:var(--cyan); background:rgba(45,212,191,.08); border-color:rgba(45,212,191,.25);}
+.navbtn.active::before{content:''; position:absolute; left:-19px; top:50%; transform:translateY(-50%); width:3px; height:22px; background:var(--cyan); border-radius:3px; box-shadow:0 0 10px var(--cyan);}
+.nav-alert-badge{position:absolute; top:2px; right:6px; width:15px; height:15px; border-radius:50%; background:var(--coral); font-size:9px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'JetBrains Mono',monospace; box-shadow:0 0 8px rgba(255,107,74,.6);}
+
+/* ---- Main content ---- */
+.main{grid-column:2; grid-row:2; overflow:hidden; position:relative;}
+.view{display:none; height:100%; overflow-y:auto; padding:26px 30px 40px;}
+.view.active{display:block; animation:fadein .35s ease;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.view-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;}
+.view-title{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:600;}
+.view-eyebrow{font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:var(--text-mute); font-family:'JetBrains Mono',monospace; margin-bottom:4px;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:9px; height:9px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:var(--cyan-dim);}
+
+/* ===== shared panel ===== */
+.panel{background:linear-gradient(180deg, var(--panel), var(--panel-hi)); border:1px solid var(--line-soft); border-radius:var(--radius); }
+.panel-head{padding:14px 18px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:space-between;}
+.panel-head h3{font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; letter-spacing:.2px;}
+.tag{font-size:10px; padding:3px 9px; border-radius:20px; font-family:'JetBrains Mono',monospace; letter-spacing:.4px; border:1px solid;}
+.tag.cyan{color:var(--cyan); border-color:rgba(45,212,191,.35); background:rgba(45,212,191,.07);}
+.tag.coral{color:var(--coral); border-color:rgba(255,107,74,.35); background:rgba(255,107,74,.07);}
+.tag.gold{color:var(--gold); border-color:rgba(224,179,77,.35); background:rgba(224,179,77,.07);}
+.tag.violet{color:var(--violet); border-color:rgba(139,127,214,.35); background:rgba(139,127,214,.07);}
+.tag.mute{color:var(--text-mute); border-color:var(--line);}
+
+/* ===================== CHAT VIEW ===================== */
+.chat-layout{display:grid; grid-template-columns:1fr 300px; gap:20px; height:calc(100vh - 116px);}
+.chat-col{display:flex; flex-direction:column; border-radius:var(--radius); background:linear-gradient(180deg, var(--panel), var(--panel-hi)); border:1px solid var(--line-soft); overflow:hidden;}
+.chat-scroll{flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:16px;}
+.msg{max-width:82%; display:flex; flex-direction:column; gap:6px;}
+.msg.user{align-self:flex-end; align-items:flex-end;}
+.msg.agent{align-self:flex-start;}
+.bubble{padding:13px 16px; border-radius:14px; font-size:13.5px; line-height:1.55;}
+.msg.user .bubble{background:linear-gradient(135deg, #164a44, #0f3530); border:1px solid rgba(45,212,191,.3); border-bottom-right-radius:4px;}
+.msg.agent .bubble{background:var(--panel-hi); border:1px solid var(--line-soft); border-bottom-left-radius:4px;}
+.msg-meta{font-size:10px; color:var(--text-mute); font-family:'JetBrains Mono',monospace; padding:0 4px;}
+.module-chips{display:flex; gap:6px; flex-wrap:wrap; padding:0 4px;}
+.agent-avatar{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--cyan); font-family:'JetBrains Mono',monospace; padding:0 4px;}
+.agent-avatar .ring{width:16px; height:16px; border-radius:50%; border:1.5px solid var(--cyan); display:flex; align-items:center; justify-content:center;}
+.agent-avatar .ring i{width:6px; height:6px; border-radius:50%; background:var(--cyan);}
+
+.inline-card{margin-top:2px; border:1px solid var(--line-soft); border-radius:10px; overflow:hidden; background:var(--abyss-2);}
+.inline-card .ic-head{padding:8px 12px; font-size:10.5px; font-family:'JetBrains Mono',monospace; color:var(--text-mute); border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between;}
+.inline-card canvas{display:block;}
+
+.chat-input{border-top:1px solid var(--line-soft); padding:14px 16px; display:flex; gap:10px; align-items:center;}
+.chat-input input{flex:1; background:var(--abyss-2); border:1px solid var(--line); border-radius:24px; padding:12px 18px; color:var(--text); font-size:13.5px; outline:none; font-family:'Inter',sans-serif;}
+.chat-input input:focus{border-color:var(--cyan-dim);}
+.send-btn{width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg, var(--cyan), var(--cyan-dim)); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+.send-btn svg{width:17px; height:17px; fill:#052018;}
+.suggest-row{display:flex; gap:8px; padding:0 16px 12px; flex-wrap:wrap;}
+.chip-btn{font-size:11px; padding:7px 12px; border-radius:20px; border:1px solid var(--line); color:var(--text-dim); background:var(--abyss-2); cursor:pointer; font-family:'JetBrains Mono',monospace; transition:.15s;}
+.chip-btn:hover{border-color:var(--cyan-dim); color:var(--cyan);}
+
+.side-col{display:flex; flex-direction:column; gap:14px; overflow-y:auto;}
+.mini-stat{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line-soft); font-size:12px;}
+.mini-stat:last-child{border-bottom:none;}
+.mini-stat .k{color:var(--text-mute);}
+.mini-stat .v{font-family:'JetBrains Mono',monospace; color:var(--text);}
+.trail-mini{padding:14px 16px; display:flex; flex-direction:column; gap:10px;}
+.trail-step{display:flex; gap:9px; font-size:11.5px;}
+.trail-step .idx{width:18px; height:18px; border-radius:50%; background:var(--abyss-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:9px; font-family:'JetBrains Mono',monospace; color:var(--text-mute); flex-shrink:0;}
+.trail-step.done .idx{border-color:var(--cyan-dim); color:var(--cyan);}
+.trail-step .t{color:var(--text-dim); line-height:1.4;}
+
+/* ===================== DASHBOARD ===================== */
+.stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px;}
+.stat-card{padding:18px 20px; position:relative; overflow:hidden;}
+.stat-card .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-mute); font-family:'JetBrains Mono',monospace;}
+.stat-card .val{font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:600; margin-top:8px;}
+.stat-card .delta{font-size:11px; margin-top:6px; font-family:'JetBrains Mono',monospace;}
+.stat-card .glow{position:absolute; width:100px; height:100px; border-radius:50%; filter:blur(40px); opacity:.25; right:-30px; top:-30px;}
+
+.chart-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:18px; margin-bottom:18px;}
+.chart-box{padding:16px 18px;}
+.chart-box canvas{margin-top:10px;}
+
+/* ===================== MAP VIEW ===================== */
+.map-layout{display:grid; grid-template-columns:1fr 280px; gap:18px; height:calc(100vh - 130px);}
+#map{width:100%; height:100%; border-radius:var(--radius); border:1px solid var(--line-soft); filter: saturate(0.85) brightness(0.9) hue-rotate(-6deg);}
+.layer-panel{display:flex; flex-direction:column; gap:12px;}
+.layer-item{display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-radius:8px; background:var(--abyss-2); border:1px solid var(--line-soft); cursor:pointer;}
+.layer-item .li-left{display:flex; align-items:center; gap:9px; font-size:12.5px;}
+.swatch{width:10px; height:10px; border-radius:3px;}
+.switch{width:34px; height:19px; border-radius:20px; background:var(--line); position:relative; transition:.2s;}
+.switch::after{content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:var(--text-mute); top:2.5px; left:2.5px; transition:.2s;}
+.switch.on{background:rgba(45,212,191,.35);}
+.switch.on::after{background:var(--cyan); transform:translateX(15px);}
+.map-legend-list{padding:14px 16px; display:flex; flex-direction:column; gap:9px; font-size:11.5px; color:var(--text-dim);}
+.map-legend-list .row{display:flex; align-items:center; gap:8px;}
+
+/* ===================== PROFILES ===================== */
+.profile-grid{display:grid; grid-template-columns:260px 1fr; gap:18px; height:calc(100vh - 130px);}
+.float-list{overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px;}
+.float-item{padding:11px 13px; border-radius:8px; border:1px solid var(--line-soft); cursor:pointer; background:var(--abyss-2); transition:.15s;}
+.float-item:hover{border-color:var(--cyan-dim);}
+.float-item.active{border-color:var(--cyan); background:rgba(45,212,191,.06);}
+.float-item .fid{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--cyan);}
+.float-item .floc{font-size:10.5px; color:var(--text-mute); margin-top:3px;}
+.profile-main{display:flex; flex-direction:column; gap:16px; overflow-y:auto;}
+.profile-charts{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.anomaly-banner{display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border-radius:10px; background:rgba(255,107,74,.08); border:1px solid rgba(255,107,74,.3);}
+.anomaly-banner svg{width:18px; height:18px; stroke:var(--coral); flex-shrink:0; margin-top:1px;}
+
+/* ===================== ALERTS ===================== */
+.alert-list{display:flex; flex-direction:column; gap:12px;}
+.alert-card{display:flex; gap:14px; padding:16px 18px; border-left:3px solid; border-radius:0 10px 10px 0; background:var(--panel);}
+.alert-card.high{border-color:var(--coral);}
+.alert-card.med{border-color:var(--gold);}
+.alert-card.low{border-color:var(--cyan);}
+.alert-icon{width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.alert-card.high .alert-icon{background:rgba(255,107,74,.12);}
+.alert-card.med .alert-icon{background:rgba(224,179,77,.12);}
+.alert-card.low .alert-icon{background:rgba(45,212,191,.12);}
+.alert-icon svg{width:18px; height:18px;}
+.alert-card.high svg{stroke:var(--coral);}
+.alert-card.med svg{stroke:var(--gold);}
+.alert-card.low svg{stroke:var(--cyan);}
+.alert-title{font-size:13.5px; font-weight:600; font-family:'Space Grotesk',sans-serif;}
+.alert-desc{font-size:12px; color:var(--text-dim); margin-top:4px; line-height:1.5;}
+.alert-foot{display:flex; gap:14px; margin-top:9px; font-size:10.5px; color:var(--text-mute); font-family:'JetBrains Mono',monospace;}
+
+/* ===================== TRAIL ===================== */
+.trail-full{position:relative; padding-left:26px;}
+.trail-full::before{content:''; position:absolute; left:9px; top:6px; bottom:6px; width:1.5px; background:linear-gradient(180deg, var(--cyan-dim), var(--line-soft));}
+.tstep{position:relative; padding-bottom:26px;}
+.tstep:last-child{padding-bottom:0;}
+.tstep .node{position:absolute; left:-26px; top:2px; width:19px; height:19px; border-radius:50%; background:var(--abyss-1); border:2px solid var(--cyan-dim); display:flex; align-items:center; justify-content:center; font-size:9px; font-family:'JetBrains Mono',monospace; color:var(--cyan);}
+.tstep .tcard{padding:14px 16px;}
+.tstep .tcard .thead{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+.tstep .tcard h4{font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600;}
+.tstep .tcard p{font-size:12px; color:var(--text-dim); line-height:1.55;}
+.tstep .tcard .tmeta{font-size:10px; color:var(--text-mute); font-family:'JetBrains Mono',monospace; margin-top:8px;}
+
+/* ===================== RESULTS TABLE ===================== */
+table.res{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.res th{text-align:left; padding:10px 14px; color:var(--text-mute); font-family:'JetBrains Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--line-soft);}
+table.res td{padding:11px 14px; border-bottom:1px solid var(--line-soft); color:var(--text-dim);}
+table.res tr:hover td{background:rgba(255,255,255,.02); color:var(--text);}
+.res-toolbar{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+.res-toolbar button{font-size:11.5px; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:var(--abyss-2); color:var(--text-dim); cursor:pointer; font-family:'JetBrains Mono',monospace;}
+.res-toolbar button.on{border-color:var(--cyan-dim); color:var(--cyan); background:rgba(45,212,191,.07);}
+
+@media(max-width:1000px){
+  .chat-layout,.map-layout,.profile-grid{grid-template-columns:1fr;}
+  .side-col,.layer-panel,.float-list{display:none;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .chart-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none">
+        <path d="M4 26 Q10 20 16 26 T28 26 T40 26" stroke="#2dd4bf" stroke-width="2" fill="none" opacity="0.9"/>
+        <path d="M4 32 Q10 26 16 32 T28 32 T40 32" stroke="#1a8f82" stroke-width="2" fill="none" opacity="0.6"/>
+        <circle cx="20" cy="14" r="7" stroke="#e8f1f2" stroke-width="1.6" fill="none"/>
+        <circle cx="20" cy="14" r="2" fill="#2dd4bf"/>
+      </svg>
+      <div>
+        <div class="brand-name">Aqua<span>Nexus</span></div>
+        <div class="brand-sub">Ocean Intelligence Console</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="status-pill"><span class="dot pulse"></span> AGENT ONLINE</div>
+      <div class="status-pill"><span class="dot" style="background:var(--gold); box-shadow:0 0 8px var(--gold);"></span> 3,842 ARGO FLOATS TRACKED</div>
+      <div class="sonar-wrap">
+        <div class="sonar"></div>
+        <div class="depth-read">MEAN DEPTH<br><b id="depthTicker">1,847 m</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV RAIL -->
+  <div class="navrail" id="navrail">
+    <div class="navbtn active" data-view="chat" title="Conversational Interface">
+      <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <span class="lbl">CHAT</span>
+    </div>
+    <div class="navbtn" data-view="dashboard" title="Charts &amp; Dashboard">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/></svg>
+      <span class="lbl">CHARTS</span>
+    </div>
+    <div class="navbtn" data-view="map" title="Map">
+      <svg viewBox="0 0 24 24"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
+      <span class="lbl">MAP</span>
+    </div>
+    <div class="navbtn" data-view="profiles" title="Ocean Profiles">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14c2-4 3-4 5-1s3 3 5-2 3-4 3-4"/></svg>
+      <span class="lbl">PROFILE</span>
+    </div>
+    <div class="navbtn" data-view="alerts" title="Alerts">
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <span class="lbl">ALERTS</span>
+      <div class="nav-alert-badge">4</div>
+    </div>
+    <div class="navbtn" data-view="trail" title="Investigation Trail">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12l-6 5M12 12l6 5"/></svg>
+      <span class="lbl">TRAIL</span>
+    </div>
+    <div class="navbtn" data-view="results" title="Structured Results">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span class="lbl">DATA</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ============ CHAT VIEW ============ -->
+    <div class="view active" id="view-chat">
+      <div class="chat-layout">
+        <div class="chat-col">
+          <div class="chat-scroll" id="chatScroll">
+
+            <div class="msg agent">
+              <div class="agent-avatar"><div class="ring"><i></i></div> AQUANEXUS AGENT</div>
+              <div class="bubble">Welcome back. I'm tracking live ARGO profiles, oil-spill signatures, mineral zones and cable corridors across the Indian Ocean basin. Ask me anything — try a question about a region, a float ID, or a threat type.</div>
+            </div>
+
+            <div class="msg user">
+              <div class="bubble">Is there anything unusual near the Arabian Sea ARGO floats this week, and could it affect the cable routes nearby?</div>
+              <div class="msg-meta">You · 09:41</div>
+            </div>
+
+            <div class="msg agent">
+              <div class="agent-avatar"><div class="ring"><i></i></div> AQUANEXUS AGENT</div>
+              <div class="module-chips"><span class="tag cyan">ARGO</span><span class="tag violet">CABLES</span></div>
+              <div class="bubble">
+                Yes — float <b>WMO 2903421</b> recorded a subsurface warm anomaly (+1.4°C at 180 dbar) over the last 4 cycles, consistent with a shallow eddy. It sits 38 km from the SEA-ME-WE 5 cable corridor. Thermal stress this size is unlikely to affect the cable directly, but it's worth watching — I've raised it as a <b>medium</b> alert.
+              </div>
+              <div class="inline-card">
+                <div class="ic-head"><span>WMO 2903421 · Temperature Anomaly</span><span>180 dbar</span></div>
+                <canvas id="chatMiniChart" height="120"></canvas>
+              </div>
+            </div>
+
+            <div class="msg user">
+              <div class="bubble">Show me the risk breakdown</div>
+              <div class="msg-meta">You · 09:43</div>
+            </div>
+
+            <div class="msg agent">
+              <div class="agent-avatar"><div class="ring"><i></i></div> AQUANEXUS AGENT</div>
+              <div class="bubble">Here's the combined risk read for that corridor segment — ocean stress is low, but I'm flagging elevated shipping density this week.</div>
+              <div class="inline-card">
+                <div class="ic-head"><span>Corridor Risk Index</span><span>SEA-ME-WE 5 · seg. 14</span></div>
+                <div style="padding:14px;">
+                  <div class="mini-stat"><span class="k">Thermal stress</span><span class="v" style="color:var(--cyan)">LOW</span></div>
+                  <div class="mini-stat"><span class="k">Seismic activity (7d)</span><span class="v" style="color:var(--cyan)">LOW</span></div>
+                  <div class="mini-stat"><span class="k">Shipping density</span><span class="v" style="color:var(--gold)">ELEVATED</span></div>
+                  <div class="mini-stat"><span class="k">Anchor-drag incidents (30d)</span><span class="v">2</span></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="suggest-row">
+            <button class="chip-btn">Nearest oil-spill signature?</button>
+            <button class="chip-btn">Compare salinity to last year</button>
+            <button class="chip-btn">Mineral zones near float 2903421</button>
+          </div>
+          <div class="chat-input">
+            <input type="text" id="chatInputBox" placeholder="Ask about ocean conditions, floats, spills, minerals, or cables…">
+            <button class="send-btn" id="sendBtn">
+              <svg viewBox="0 0 24 24"><path d="M2 12l19-9-9 19-2-8-8-2z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="side-col">
+          <div class="panel">
+            <div class="panel-head"><h3>Session Context</h3><span class="tag mute">LIVE</span></div>
+            <div style="padding:12px 16px;">
+              <div class="mini-stat"><span class="k">Region</span><span class="v">Arabian Sea</span></div>
+              <div class="mini-stat"><span class="k">Active floats</span><span class="v">214</span></div>
+              <div class="mini-stat"><span class="k">Modules engaged</span><span class="v">ARGO, CABLES</span></div>
+              <div class="mini-stat"><span class="k">Last sync</span><span class="v">2 min ago</span></div>
+            </div>
+          </div>
+          <div class="panel" style="flex:1;">
+            <div class="panel-head"><h3>Reasoning Snapshot</h3></div>
+            <div class="trail-mini">
+              <div class="trail-step done"><span class="idx">1</span><span class="t">Parsed query → region + threat intent</span></div>
+              <div class="trail-step done"><span class="idx">2</span><span class="t">Routed to ARGO + Cables modules</span></div>
+              <div class="trail-step done"><span class="idx">3</span><span class="t">Pulled float 2903421 last 4 cycles</span></div>
+              <div class="trail-step done"><span class="idx">4</span><span class="t">Cross-referenced cable corridor geometry</span></div>
+              <div class="trail-step"><span class="idx">5</span><span class="t">Awaiting next query…</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ DASHBOARD VIEW ============ -->
+    <div class="view" id="view-dashboard">
+      <div class="view-head">
+        <div><div class="view-eyebrow">Fleet-wide telemetry</div><div class="view-title">Ocean Conditions Dashboard</div></div>
+        <span class="tag cyan">Updated 09:44 IST</span>
+      </div>
+
+      <div class="stat-grid">
+        <div class="panel stat-card"><div class="glow" style="background:var(--cyan);"></div><div class="lbl">Avg Sea Surface Temp</div><div class="val">27.6°C</div><div class="delta" style="color:var(--coral);">▲ 0.3° vs 10yr avg</div></div>
+        <div class="panel stat-card"><div class="glow" style="background:var(--gold);"></div><div class="lbl">Avg Salinity</div><div class="val">35.1 <span style="font-size:14px;color:var(--text-mute)">PSU</span></div><div class="delta" style="color:var(--text-mute);">▬ within normal range</div></div>
+        <div class="panel stat-card"><div class="glow" style="background:var(--coral);"></div><div class="lbl">Active Anomalies</div><div class="val">7</div><div class="delta" style="color:var(--coral);">▲ 2 new this week</div></div>
+        <div class="panel stat-card"><div class="glow" style="background:var(--violet);"></div><div class="lbl">Floats Reporting</div><div class="val">3,842</div><div class="delta" style="color:var(--cyan);">98.4% uptime</div></div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="panel chart-box">
+          <div class="panel-head" style="border:none; padding:0 0 6px;"><h3>Temperature Trend — Basin Average</h3><span class="tag mute">90 days</span></div>
+          <canvas id="tempTrendChart" height="90"></canvas>
+        </div>
+        <div class="panel chart-box">
+          <div class="panel-head" style="border:none; padding:0 0 6px;"><h3>Module Query Share</h3><span class="tag mute">7 days</span></div>
+          <canvas id="moduleDonut" height="90"></canvas>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="panel chart-box">
+          <div class="panel-head" style="border:none; padding:0 0 6px;"><h3>Salinity vs Pressure — Regional Comparison</h3><span class="tag mute">4 regions</span></div>
+          <canvas id="salinityBar" height="95"></canvas>
+        </div>
+        <div class="panel chart-box">
+          <div class="panel-head" style="border:none; padding:0 0 6px;"><h3>Anomaly Frequency</h3><span class="tag mute">12 weeks</span></div>
+          <canvas id="anomalyLine" height="95"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MAP VIEW ============ -->
+    <div class="view" id="view-map">
+      <div class="view-head">
+        <div><div class="view-eyebrow">Geospatial overlay</div><div class="view-title">Live Ocean Map</div></div>
+        <span class="tag cyan">4 layers active</span>
+      </div>
+      <div class="map-layout">
+        <div id="map"></div>
+        <div class="layer-panel">
+          <div class="panel">
+            <div class="panel-head"><h3>Layers</h3></div>
+            <div style="padding:12px; display:flex; flex-direction:column; gap:8px;">
+              <div class="layer-item" data-layer="argo"><div class="li-left"><span class="swatch" style="background:var(--cyan);"></span>ARGO Floats</div><div class="switch on"></div></div>
+              <div class="layer-item" data-layer="spill"><div class="li-left"><span class="swatch" style="background:var(--coral);"></span>Oil Spill Zones</div><div class="switch on"></div></div>
+              <div class="layer-item" data-layer="mineral"><div class="li-left"><span class="swatch" style="background:var(--gold);"></span>Mineral Deposits</div><div class="switch on"></div></div>
+              <div class="layer-item" data-layer="cable"><div class="li-left"><span class="swatch" style="background:var(--violet);"></span>Submarine Cables</div><div class="switch on"></div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Legend</h3></div>
+            <div class="map-legend-list">
+              <div class="row"><span class="swatch" style="background:var(--cyan);"></span>Nominal float reading</div>
+              <div class="row"><span class="swatch" style="background:var(--coral);"></span>Detected spill signature</div>
+              <div class="row"><span class="swatch" style="background:var(--gold);"></span>Confirmed mineral zone</div>
+              <div class="row"><span class="swatch" style="background:var(--violet);"></span>Active cable route</div>
+            </div>
+          </div>
+          <div class="panel" id="mapDetail">
+            <div class="panel-head"><h3>Selection</h3></div>
+            <div style="padding:14px 16px; font-size:12px; color:var(--text-mute);">Click a marker on the map to inspect it here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PROFILES VIEW ============ -->
+    <div class="view" id="view-profiles">
+      <div class="view-head">
+        <div><div class="view-eyebrow">Depth-resolved readings</div><div class="view-title">Ocean Profiles</div></div>
+        <span class="tag cyan">Float WMO 2903421 selected</span>
+      </div>
+      <div class="profile-grid">
+        <div class="panel">
+          <div class="panel-head"><h3>Nearby Floats</h3></div>
+          <div class="float-list">
+            <div class="float-item active" data-float="2903421"><div class="fid">WMO 2903421</div><div class="floc">17.2°N, 68.4°E · cycle 114</div></div>
+            <div class="float-item" data-float="2903188"><div class="fid">WMO 2903188</div><div class="floc">14.9°N, 66.1°E · cycle 88</div></div>
+            <div class="float-item" data-float="2902977"><div class="fid">WMO 2902977</div><div class="floc">19.5°N, 70.2°E · cycle 201</div></div>
+            <div class="float-item" data-float="2903550"><div class="fid">WMO 2903550</div><div class="floc">12.1°N, 64.7°E · cycle 42</div></div>
+            <div class="float-item" data-float="2902810"><div class="fid">WMO 2902810</div><div class="floc">16.0°N, 72.3°E · cycle 156</div></div>
+          </div>
+        </div>
+        <div class="profile-main">
+          <div class="anomaly-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+            <div>
+              <div style="font-size:13px; font-weight:600;">Anomalous warming detected at 180 dbar</div>
+              <div style="font-size:12px; color:var(--text-dim); margin-top:3px;">+1.4°C above the 10-year seasonal baseline for this cycle, consistent with a shallow mesoscale eddy. Flagged 2 hours ago.</div>
+            </div>
+          </div>
+          <div class="profile-charts">
+            <div class="panel chart-box">
+              <div class="panel-head" style="border:none; padding:0 0 6px;"><h3>Temperature vs Depth</h3></div>
+              <canvas id="tempDepthChart" height="220"></canvas>
+            </div>
+            <div class="panel chart-box">
+              <div class="panel-head" style="border:none; padding:0 0 6px;"><h3>Salinity vs Depth</h3></div>
+              <canvas id="salDepthChart" height="220"></canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Historical Comparison — Cycle 114 vs 10yr Baseline</h3><span class="tag mute">Same season</span></div>
+            <canvas id="historyCompare" height="80" style="padding:14px;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ ALERTS VIEW ============ -->
+    <div class="view" id="view-alerts">
+      <div class="view-head">
+        <div><div class="view-eyebrow">Prioritized by severity</div><div class="view-title">Active Alerts</div></div>
+        <span class="tag coral">4 open</span>
+      </div>
+      <div class="alert-list">
+        <div class="alert-card high">
+          <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M3 12s2-8 9-8 9 8 9 8-2 8-9 8-9-8-9-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <div style="flex:1;">
+            <div class="alert-title">Probable oil-spill signature — Gulf of Kutch approach</div>
+            <div class="alert-desc">Satellite-derived surface signature (2.1 km²) detected 14 km off the Kutch coast, coinciding with elevated shipping traffic. Confidence: 82%.</div>
+            <div class="alert-foot"><span class="tag coral">OIL SPILL</span><span>22.6°N, 69.1°E</span><span>Detected 41 min ago</span></div>
+          </div>
+        </div>
+        <div class="alert-card med">
+          <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M3 3v18h18"/><path d="M7 14c2-4 3-4 5-1s3 3 5-2 3-4 3-4"/></svg></div>
+          <div style="flex:1;">
+            <div class="alert-title">Subsurface thermal anomaly near cable corridor</div>
+            <div class="alert-desc">Float 2903421 recorded +1.4°C at 180 dbar, 38 km from the SEA-ME-WE 5 route. Monitoring for eddy drift toward the corridor.</div>
+            <div class="alert-foot"><span class="tag cyan">ARGO</span><span class="tag violet">CABLES</span><span>17.2°N, 68.4°E</span><span>2 hrs ago</span></div>
+          </div>
+        </div>
+        <div class="alert-card med">
+          <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg></div>
+          <div style="flex:1;">
+            <div class="alert-title">Elevated anchor-drag risk over mineral zone MZ-14</div>
+            <div class="alert-desc">Shipping density up 34% week-over-week over a nodule-rich seabed zone; two drag incidents logged in the past 30 days.</div>
+            <div class="alert-foot"><span class="tag gold">MINERALS</span><span>15.8°N, 71.0°E</span><span>6 hrs ago</span></div>
+          </div>
+        </div>
+        <div class="alert-card low">
+          <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M12 2v20M2 12h20"/></svg></div>
+          <div style="flex:1;">
+            <div class="alert-title">Float 2902977 delayed reporting</div>
+            <div class="alert-desc">No telemetry received for 26 hours, beyond the expected 10-day cycle window. Likely a routine surfacing delay.</div>
+            <div class="alert-foot"><span class="tag cyan">ARGO</span><span>19.5°N, 70.2°E</span><span>1 day ago</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TRAIL VIEW ============ -->
+    <div class="view" id="view-trail">
+      <div class="view-head">
+        <div><div class="view-eyebrow">Agent reasoning, fully auditable</div><div class="view-title">Investigation Trail</div></div>
+        <span class="tag mute">Query #4471</span>
+      </div>
+      <div class="panel" style="padding:16px 20px; margin-bottom:20px;">
+        <div style="font-size:11px; color:var(--text-mute); font-family:'JetBrains Mono',monospace; margin-bottom:4px;">ORIGINAL QUERY</div>
+        <div style="font-size:14px;">"Is there anything unusual near the Arabian Sea ARGO floats this week, and could it affect the cable routes nearby?"</div>
+      </div>
+      <div class="trail-full">
+        <div class="tstep">
+          <div class="node">1</div>
+          <div class="panel tcard">
+            <div class="thead"><h4>Intent Parsing</h4><span class="tag mute">142ms</span></div>
+            <p>Identified a compound query: (a) anomaly detection request scoped to Arabian Sea region, (b) downstream risk assessment against infrastructure. Extracted entities: region = "Arabian Sea", timeframe = "this week", asset_type = "submarine cable".</p>
+            <div class="tmeta">agent.nlu → intent=anomaly_check+risk_assess</div>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="node">2</div>
+          <div class="panel tcard">
+            <div class="thead"><h4>Module Selection</h4><span class="tag cyan">ARGO</span></div>
+            <p>Routed to the ARGO module to pull recent profile cycles for floats within the Arabian Sea bounding box, ranked by recency and anomaly score.</p>
+            <div class="tmeta">router.select_module → ARGO (confidence 0.94)</div>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="node">3</div>
+          <div class="panel tcard">
+            <div class="thead"><h4>Data Retrieval</h4><span class="tag mute">318ms</span></div>
+            <p>Fetched last 4 cycles for float WMO 2903421 from NetCDF store; computed deviation against the 10-year seasonal baseline at matching pressure levels.</p>
+            <div class="tmeta">argo.get_profile(float=2903421, cycles=4) → +1.4°C @ 180dbar</div>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="node">4</div>
+          <div class="panel tcard">
+            <div class="thead"><h4>Cross-Module Correlation</h4><span class="tag violet">CABLES</span></div>
+            <p>Engaged the Cables module to compute the geodesic distance between the anomaly location and the nearest known cable geometry (SEA-ME-WE 5).</p>
+            <div class="tmeta">cables.nearest_route(lat=17.2, lon=68.4) → 38.2 km, segment 14</div>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="node">5</div>
+          <div class="panel tcard">
+            <div class="thead"><h4>Risk Synthesis</h4><span class="tag gold">MEDIUM</span></div>
+            <p>Combined thermal stress magnitude, distance-to-asset, and recent seismic/shipping context into a composite risk score. Result: medium priority — monitor, no immediate action required.</p>
+            <div class="tmeta">agent.synthesize_risk → score=0.47 (medium)</div>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="node">6</div>
+          <div class="panel tcard">
+            <div class="thead"><h4>Response Generation</h4><span class="tag mute">96ms</span></div>
+            <p>Composed a natural-language summary citing the specific float, magnitude, and distance, and logged a medium-severity alert for continued monitoring.</p>
+            <div class="tmeta">agent.respond → alert_created=true</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RESULTS VIEW ============ -->
+    <div class="view" id="view-results">
+      <div class="view-head">
+        <div><div class="view-eyebrow">Machine-readable output</div><div class="view-title">Structured Results</div></div>
+        <span class="tag mute">query_id: 4471</span>
+      </div>
+      <div class="res-toolbar">
+        <button class="on">All modules</button>
+        <button>ARGO</button>
+        <button>Oil Spill</button>
+        <button>Minerals</button>
+        <button>Cables</button>
+      </div>
+      <div class="panel" style="overflow-x:auto;">
+        <table class="res">
+          <thead>
+            <tr><th>ID</th><th>Module</th><th>Location</th><th>Parameter</th><th>Value</th><th>Deviation</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono">2903421</td><td><span class="tag cyan">ARGO</span></td><td class="mono">17.2°N, 68.4°E</td><td>Temp @ 180dbar</td><td class="mono">29.1°C</td><td class="mono" style="color:var(--coral)">+1.4°C</td><td><span class="tag gold">Anomaly</span></td></tr>
+            <tr><td class="mono">2903188</td><td><span class="tag cyan">ARGO</span></td><td class="mono">14.9°N, 66.1°E</td><td>Salinity @ 50dbar</td><td class="mono">35.4 PSU</td><td class="mono">+0.1</td><td><span class="tag mute">Nominal</span></td></tr>
+            <tr><td class="mono">OS-1182</td><td><span class="tag coral">Oil Spill</span></td><td class="mono">22.6°N, 69.1°E</td><td>Surface area</td><td class="mono">2.1 km²</td><td class="mono">—</td><td><span class="tag coral">Active</span></td></tr>
+            <tr><td class="mono">MZ-14</td><td><span class="tag gold">Minerals</span></td><td class="mono">15.8°N, 71.0°E</td><td>Nodule density</td><td class="mono">8.4 kg/m²</td><td class="mono">—</td><td><span class="tag mute">Confirmed</span></td></tr>
+            <tr><td class="mono">SMW5-14</td><td><span class="tag violet">Cables</span></td><td class="mono">17.5°N, 68.7°E</td><td>Distance to anomaly</td><td class="mono">38.2 km</td><td class="mono">—</td><td><span class="tag gold">Monitoring</span></td></tr>
+            <tr><td class="mono">2902977</td><td><span class="tag cyan">ARGO</span></td><td class="mono">19.5°N, 70.2°E</td><td>Reporting gap</td><td class="mono">26 hrs</td><td class="mono">—</td><td><span class="tag mute">Delayed</span></td></tr>
+            <tr><td class="mono">2902810</td><td><span class="tag cyan">ARGO</span></td><td class="mono">16.0°N, 72.3°E</td><td>Pressure @ surface</td><td class="mono">1013 dbar</td><td class="mono">0.0</td><td><span class="tag mute">Nominal</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+Chart.defaults.color = '#7d96a8';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 10.5;
+const gridColor = 'rgba(255,255,255,0.05)';
+
+/* ---------- NAV SWITCHING ---------- */
+const navbtns = document.querySelectorAll('.navbtn');
+navbtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    navbtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='map' && window._map){ setTimeout(()=>window._map.invalidateSize(), 150); }
+  });
+});
+
+/* ---------- depth ticker ---------- */
+setInterval(()=>{
+  const el = document.getElementById('depthTicker');
+  const base = 1847 + Math.round((Math.random()-0.5)*14);
+  el.textContent = base.toLocaleString() + ' m';
+}, 2600);
+
+/* ---------- CHAT interactions ---------- */
+const chatScroll = document.getElementById('chatScroll');
+const chatInputBox = document.getElementById('chatInputBox');
+function sendMsg(text){
+  if(!text) return;
+  const um = document.createElement('div');
+  um.className='msg user';
+  um.innerHTML = `<div class="bubble">${text}</div><div class="msg-meta">You · now</div>`;
+  chatScroll.appendChild(um);
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+  chatInputBox.value='';
+  setTimeout(()=>{
+    const am = document.createElement('div');
+    am.className='msg agent';
+    am.innerHTML = `<div class="agent-avatar"><div class="ring"><i></i></div> AQUANEXUS AGENT</div>
+    <div class="module-chips"><span class="tag cyan">ARGO</span></div>
+    <div class="bubble">Pulling relevant profiles and cross-checking against historical baselines now — this is a frontend preview, so responses here are illustrative. Once connected to the live agent backend, this reply will reflect real ARGO, spill, mineral and cable data.</div>`;
+    chatScroll.appendChild(am);
+    chatScroll.scrollTop = chatScroll.scrollHeight;
+  }, 700);
+}
+document.getElementById('sendBtn').addEventListener('click', ()=> sendMsg(chatInputBox.value.trim()));
+chatInputBox.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMsg(chatInputBox.value.trim()); });
+document.querySelectorAll('.chip-btn').forEach(c=> c.addEventListener('click', ()=> sendMsg(c.textContent)));
+
+/* ---------- shared chart helpers ---------- */
+function lineGrad(ctx, color){
+  const g = ctx.createLinearGradient(0,0,0,180);
+  g.addColorStop(0, color+'55');
+  g.addColorStop(1, color+'00');
+  return g;
+}
+
+/* mini chat chart */
+new Chart(document.getElementById('chatMiniChart'), {
+  type:'line',
+  data:{labels:['Cyc 111','Cyc 112','Cyc 113','Cyc 114'],
+  datasets:[{data:[27.1,27.6,28.3,29.1],borderColor:'#ff6b4a',backgroundColor:c=>lineGrad(c.chart.ctx,'#ff6b4a'),fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#ff6b4a'},
+  {data:[27.0,27.1,27.3,27.7],borderColor:'#3a4f5f',borderDash:[3,3],fill:false,tension:.4,pointRadius:0}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:gridColor}},y:{grid:{color:gridColor}}}}
+});
+
+/* dashboard: temp trend */
+new Chart(document.getElementById('tempTrendChart'), {
+  type:'line',
+  data:{labels:Array.from({length:12},(_,i)=>'W'+(i+1)),
+  datasets:[{label:'Basin avg SST', data:[26.8,26.9,27.0,27.2,27.1,27.3,27.5,27.4,27.6,27.7,27.6,27.6], borderColor:'#2dd4bf', backgroundColor:c=>lineGrad(c.chart.ctx,'#2dd4bf'), fill:true, tension:.4, pointRadius:0, borderWidth:2}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}},y:{grid:{color:gridColor}}}}
+});
+
+/* module donut */
+new Chart(document.getElementById('moduleDonut'), {
+  type:'doughnut',
+  data:{labels:['ARGO','Oil Spill','Minerals','Cables'], datasets:[{data:[52,21,14,13], backgroundColor:['#2dd4bf','#ff6b4a','#e0b34d','#8b7fd6'], borderColor:'#0e2032', borderWidth:3}]},
+  options:{plugins:{legend:{position:'bottom', labels:{boxWidth:9, padding:14, font:{size:10.5}}}}, cutout:'68%'}
+});
+
+/* salinity bar */
+new Chart(document.getElementById('salinityBar'), {
+  type:'bar',
+  data:{labels:['Arabian Sea','Bay of Bengal','Andaman Sea','Equatorial IO'],
+  datasets:[{label:'Surface',data:[36.2,33.1,33.6,35.0], backgroundColor:'#2dd4bf99'},
+  {label:'200 dbar',data:[35.6,34.9,34.7,35.2], backgroundColor:'#8b7fd699'}]},
+  options:{plugins:{legend:{position:'bottom', labels:{boxWidth:9,padding:14,font:{size:10.5}}}}, scales:{x:{grid:{display:false}},y:{grid:{color:gridColor}}}}
+});
+
+/* anomaly line */
+new Chart(document.getElementById('anomalyLine'), {
+  type:'line',
+  data:{labels:Array.from({length:12},(_,i)=>'W'+(i+1)),
+  datasets:[{data:[2,3,1,4,2,3,5,4,6,5,7,7], borderColor:'#ff6b4a', backgroundColor:c=>lineGrad(c.chart.ctx,'#ff6b4a'), fill:true, tension:.35, pointRadius:2, pointBackgroundColor:'#ff6b4a'}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}},y:{grid:{color:gridColor}, beginAtZero:true}}}
+});
+
+/* ---------- profiles: temp vs depth / sal vs depth ---------- */
+const depths = [0,25,50,75,100,150,200,300,400,600,800,1000];
+const tempVals = [29.1,28.7,27.9,26.2,23.8,19.4,15.1,11.2,8.6,6.1,4.8,4.1];
+const salVals = [35.6,35.7,35.8,35.7,35.5,35.3,35.1,34.9,34.7,34.6,34.6,34.7];
+
+new Chart(document.getElementById('tempDepthChart'), {
+  type:'line',
+  data:{labels:depths, datasets:[{data:tempVals, borderColor:'#ff6b4a', backgroundColor:c=>lineGrad(c.chart.ctx,'#ff6b4a'), fill:true, tension:.4, pointRadius:2, pointBackgroundColor:'#ff6b4a'}]},
+  options:{indexAxis:'y', plugins:{legend:{display:false}},
+    scales:{y:{reverse:true, title:{display:true,text:'Depth (dbar)', color:'#7d96a8'}, grid:{color:gridColor}}, x:{title:{display:true,text:'°C', color:'#7d96a8'}, grid:{color:gridColor}}}}
+});
+new Chart(document.getElementById('salDepthChart'), {
+  type:'line',
+  data:{labels:depths, datasets:[{data:salVals, borderColor:'#e0b34d', backgroundColor:c=>lineGrad(c.chart.ctx,'#e0b34d'), fill:true, tension:.4, pointRadius:2, pointBackgroundColor:'#e0b34d'}]},
+  options:{indexAxis:'y', plugins:{legend:{display:false}},
+    scales:{y:{reverse:true, title:{display:true,text:'Depth (dbar)', color:'#7d96a8'}, grid:{color:gridColor}}, x:{title:{display:true,text:'PSU', color:'#7d96a8'}, grid:{color:gridColor}}}}
+});
+new Chart(document.getElementById('historyCompare'), {
+  type:'bar',
+  data:{labels:depths, datasets:[
+    {label:'Cycle 114 (now)', data:tempVals, backgroundColor:'#ff6b4a99'},
+    {label:'10yr baseline', data:tempVals.map(v=>v-1.1), backgroundColor:'#2dd4bf55'}
+  ]},
+  options:{plugins:{legend:{position:'bottom', labels:{boxWidth:9,padding:14,font:{size:10.5}}}}, scales:{x:{grid:{display:false}},y:{grid:{color:gridColor}}}}
+});
+
+document.querySelectorAll('.float-item').forEach(fi=>{
+  fi.addEventListener('click', ()=>{
+    document.querySelectorAll('.float-item').forEach(x=>x.classList.remove('active'));
+    fi.classList.add('active');
+  });
+});
+
+/* ---------- MAP ---------- */
+const map = L.map('map', {zoomControl:true, attributionControl:false}).setView([17.5, 68.5], 5);
+window._map = map;
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:12}).addTo(map);
+
+function markerIcon(color){
+  return L.divIcon({className:'', html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #08131f;box-shadow:0 0 10px ${color}"></div>`, iconSize:[14,14]});
+}
+const layers = {
+  argo: L.layerGroup([
+    L.marker([17.2,68.4], {icon:markerIcon('#2dd4bf')}).bindPopup('<b>ARGO WMO 2903421</b><br>Temp anomaly +1.4°C @180dbar'),
+    L.marker([14.9,66.1], {icon:markerIcon('#2dd4bf')}).bindPopup('<b>ARGO WMO 2903188</b><br>Nominal readings'),
+    L.marker([19.5,70.2], {icon:markerIcon('#2dd4bf')}).bindPopup('<b>ARGO WMO 2902977</b><br>Reporting delayed 26h'),
+    L.marker([16.0,72.3], {icon:markerIcon('#2dd4bf')}).bindPopup('<b>ARGO WMO 2902810</b><br>Nominal readings'),
+  ]).addTo(map),
+  spill: L.layerGroup([
+    L.circle([22.6,69.1], {radius:15000, color:'#ff6b4a', fillColor:'#ff6b4a', fillOpacity:0.25}).bindPopup('<b>Spill signature OS-1182</b><br>2.1 km² · confidence 82%'),
+  ]).addTo(map),
+  mineral: L.layerGroup([
+    L.circle([15.8,71.0], {radius:22000, color:'#e0b34d', fillColor:'#e0b34d', fillOpacity:0.18}).bindPopup('<b>Mineral zone MZ-14</b><br>Nodule density 8.4 kg/m²'),
+  ]).addTo(map),
+  cable: L.layerGroup([
+    L.polyline([[9,63],[13,65],[17.5,68.7],[21,71],[24.8,67]], {color:'#8b7fd6', weight:2.5, dashArray:'6,5'}).bindPopup('<b>SEA-ME-WE 5</b><br>Segment 14 · monitoring'),
+  ]).addTo(map),
+};
+
+document.querySelectorAll('.layer-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    const key = item.dataset.layer;
+    const sw = item.querySelector('.switch');
+    sw.classList.toggle('on');
+    if(sw.classList.contains('on')){ map.addLayer(layers[key]); } else { map.removeLayer(layers[key]); }
+  });
+});
+
+const mapDetail = document.getElementById('mapDetail');
+map.on('popupopen', e=>{
+  mapDetail.innerHTML = `<div class="panel-head"><h3>Selection</h3></div><div style="padding:14px 16px; font-size:12.5px; color:var(--text-dim); line-height:1.6;">${e.popup.getContent()}</div>`;
+});
+</script>
+</body>
+</html>
