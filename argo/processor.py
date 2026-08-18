@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -12,6 +13,9 @@ from argo.loader import load_raw_dataset
 
 GOOD_QC_FLAG = "1"
 POINT_DIM = "N_POINTS"
+PROCESSED_DATA_PATH = (
+    Path(__file__).resolve().parent / "data" / "processed" / "india_argo_cleaned_2021_2025.nc"
+)
 
 
 def clean_dataset(dataset: xr.Dataset, *, inplace: bool = False) -> xr.Dataset:
@@ -95,9 +99,48 @@ def get_available_cycles(dataset: xr.Dataset, platform_number: Any) -> list[Any]
     return _sorted_unique(float_data["CYCLE_NUMBER"])
 
 
+def build_processed_dataset(force: bool = False) -> dict[str, Any]:
+    """Build the persistent cleaned ARGO dataset cache when needed."""
+    output_path = PROCESSED_DATA_PATH
+    if output_path.exists() and not force:
+        dataset = xr.open_dataset(output_path)
+        try:
+            return {
+                "rebuilt": False,
+                "output_path": str(output_path),
+                "point_count": _point_count(dataset),
+            }
+        finally:
+            dataset.close()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_dataset: xr.Dataset | None = None
+    cleaned_dataset: xr.Dataset | None = None
+
+    try:
+        raw_dataset = load_raw_dataset()
+        cleaned_dataset = clean_dataset(raw_dataset)
+        cleaned_dataset.attrs = _netcdf_safe_attrs(cleaned_dataset.attrs)
+        cleaned_dataset.to_netcdf(output_path)
+
+        return {
+            "rebuilt": True,
+            "output_path": str(output_path),
+            "point_count": _point_count(cleaned_dataset),
+        }
+    finally:
+        if cleaned_dataset is not None:
+            cleaned_dataset.close()
+        if raw_dataset is not None:
+            raw_dataset.close()
+
+
 def get_clean_dataset() -> xr.Dataset:
-    """Load raw ARGO observations and return a cleaned dataset."""
-    return clean_dataset(load_raw_dataset())
+    """Open the persistent cleaned ARGO dataset, building it once if missing."""
+    if not PROCESSED_DATA_PATH.exists():
+        build_processed_dataset()
+
+    return xr.open_dataset(PROCESSED_DATA_PATH)
 
 
 def _require_variables(dataset: xr.Dataset, names: tuple[str, ...]) -> None:
@@ -134,6 +177,17 @@ def _normalize_qc_flag(value: Any) -> str:
 
     text = str(value).strip()
     return text[:-2] if text.endswith(".0") else text
+
+
+def _netcdf_safe_attrs(attrs: dict[Any, Any]) -> dict[Any, Any]:
+    """Convert dataset attributes to NetCDF-safe scalar/list values."""
+    safe_attrs: dict[Any, Any] = {}
+    for key, value in attrs.items():
+        if isinstance(value, (bool, np.bool_)):
+            safe_attrs[key] = str(bool(value)).lower()
+        else:
+            safe_attrs[key] = value
+    return safe_attrs
 
 
 def _sorted_unique(values: xr.DataArray) -> list[Any]:
