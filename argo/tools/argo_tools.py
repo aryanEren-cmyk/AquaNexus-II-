@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 
+from argo.analysis.anomaly_analysis import analyze_profile_temperature_anomaly
 from argo.analysis.profile_analysis import (
     calculate_profile_statistics,
     compare_profiles,
@@ -142,6 +143,19 @@ def compare_float_profiles(
         "source": SOURCE,
         "comparison": compare_profiles(profile_a, profile_b),
     }
+
+
+def get_temperature_anomaly(
+    platform_number: int, cycle_number: int, pressure: float
+) -> dict[str, Any]:
+    """Return historical temperature anomaly analysis for one profile pressure."""
+    dataset = _get_dataset()
+    return analyze_profile_temperature_anomaly(
+        dataset,
+        platform_number=platform_number,
+        cycle_number=cycle_number,
+        pressure=pressure,
+    )
 
 
 def _get_dataset() -> xr.Dataset:
