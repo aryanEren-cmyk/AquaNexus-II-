@@ -4,6 +4,7 @@ import ChatView from './components/chat/ChatView.jsx'
 import Sidebar from './components/layout/Sidebar.jsx'
 import TopBar from './components/layout/TopBar.jsx'
 import MapPage from './pages/MapPage.jsx'
+import ProfilesPage from './pages/ProfilesPage.jsx'
 import './styles/variables.css'
 import './styles/global.css'
 import './styles/components.css'
@@ -26,6 +27,8 @@ function App() {
             <ChatView />
           ) : activeModule === 'Map' ? (
             <MapPage />
+          ) : activeModule === 'Profiles' ? (
+            <ProfilesPage />
           ) : (
             <section className="module-placeholder" aria-live="polite">
               <div className="placeholder-kicker">

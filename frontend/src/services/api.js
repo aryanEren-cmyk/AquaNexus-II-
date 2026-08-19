@@ -22,6 +22,14 @@ export async function getOceanConditions(location, depth_m = 0, argo_radius_km =
   })
 }
 
+export async function getArgoCycles(floatId) {
+  return request(`/api/argo/cycles/${floatId}`)
+}
+
+export async function getArgoProfile(floatId, cycle) {
+  return request(`/api/argo/profile/${floatId}/${cycle}`)
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
