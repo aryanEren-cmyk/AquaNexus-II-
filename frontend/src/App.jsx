@@ -3,6 +3,7 @@ import { Database, FlaskConical } from 'lucide-react'
 import ChatView from './components/chat/ChatView.jsx'
 import Sidebar from './components/layout/Sidebar.jsx'
 import TopBar from './components/layout/TopBar.jsx'
+import MapPage from './pages/MapPage.jsx'
 import './styles/variables.css'
 import './styles/global.css'
 import './styles/components.css'
@@ -23,6 +24,8 @@ function App() {
         <main className="page-surface">
           {activeModule === 'Chat' ? (
             <ChatView />
+          ) : activeModule === 'Map' ? (
+            <MapPage />
           ) : (
             <section className="module-placeholder" aria-live="polite">
               <div className="placeholder-kicker">

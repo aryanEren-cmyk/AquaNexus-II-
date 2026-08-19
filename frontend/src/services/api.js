@@ -11,6 +11,17 @@ export async function sendChatMessage(message) {
   })
 }
 
+export async function getOceanConditions(location, depth_m = 0, argo_radius_km = 300) {
+  return request('/api/ocean/conditions', {
+    method: 'POST',
+    body: JSON.stringify({
+      location,
+      depth_m,
+      argo_radius_km,
+    }),
+  })
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -24,7 +35,7 @@ async function request(path, options = {}) {
   try {
     payload = await response.json()
   } catch {
-    payload = null
+    // Some successful responses may not include a JSON body.
   }
 
   if (!response.ok) {
