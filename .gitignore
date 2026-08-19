@@ -2,3 +2,8 @@
 argo/data/raw/*.nc
 argo/data/processed/*.nc
 argo/data/live/*.nc
+copernicus/data/present/*.nc
+copernicus/data/present/*.nc*
+copernicus/data/present/*.zarr/
+__pycache__/
+*.pyc
