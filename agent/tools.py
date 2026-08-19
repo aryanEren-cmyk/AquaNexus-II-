@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from argo.tools import argo_tools
+from ocean.conditions import get_ocean_conditions
 
 
 ToolFunction = Callable[..., dict[str, Any]]
@@ -50,6 +51,36 @@ def _schema(
 
 
 TOOL_REGISTRY: dict[str, ToolDefinition] = {
+    "get_ocean_conditions": ToolDefinition(
+        function=get_ocean_conditions,
+        required=("location",),
+        schema=_schema(
+            "get_ocean_conditions",
+            (
+                "Get present ocean conditions for a named place, sea, region or "
+                "coordinate within AquaNexus coverage. Combines Copernicus "
+                "present-state estimates, recent ARGO observations and historical "
+                "ARGO context. This is the preferred tool for normal user "
+                "location-based ocean questions such as: temperature near Kochi; "
+                "ocean conditions in Arabian Sea; salinity near Goa; ocean "
+                "conditions at 10N 75E."
+            ),
+            {
+                "location": {
+                    "type": "string",
+                    "description": (
+                        "Named place, region, sea or coordinate such as Kochi, "
+                        "Arabian Sea, or 10N 75E"
+                    ),
+                },
+                "depth_m": _number("Requested Copernicus depth in meters. Default 0."),
+                "argo_radius_km": _number(
+                    "Maximum distance for recent ARGO evidence. Default 300 km."
+                ),
+            },
+            ("location",),
+        ),
+    ),
     "get_float_profile": ToolDefinition(
         function=argo_tools.get_float_profile,
         required=("platform_number", "cycle_number"),
