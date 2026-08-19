@@ -8,3 +8,4 @@ copernicus/data/present/*.zarr/
 location/cache/locations.json
 __pycache__/
 *.pyc
+argo/data/processed/historical_profile_index.npz

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -21,7 +22,14 @@ from argo.processor import get_available_cycles, get_clean_dataset, get_float_da
 
 SOURCE = "ARGO"
 EARTH_RADIUS_KM = 6371.0088
+PROFILE_INDEX_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "processed"
+    / "historical_profile_index.npz"
+)
 _DATASET: xr.Dataset | None = None
+_PROFILE_INDEX: dict[str, np.ndarray] | None = None
 
 
 def get_float_profile(platform_number: int, cycle_number: int) -> dict[str, Any]:
@@ -97,29 +105,13 @@ def find_nearest_profiles(latitude: float, longitude: float, limit: int = 5) -> 
     """Find nearest ARGO profiles to a coordinate using profile-level Haversine distance."""
     query_latitude, query_longitude = _validate_coordinate(latitude, longitude)
     result_limit = _validate_limit(limit)
-    dataset = _get_dataset()
-
-    profile_index = _profile_index(dataset)
-    if not profile_index:
-        profiles: list[dict[str, Any]] = []
-    else:
-        profiles = sorted(
-            (
-                {
-                    **profile,
-                    "distance_km": _json_float(
-                        _haversine_km(
-                            query_latitude,
-                            query_longitude,
-                            profile["latitude"],
-                            profile["longitude"],
-                        )
-                    ),
-                }
-                for profile in profile_index
-            ),
-            key=lambda item: item["distance_km"],
-        )[:result_limit]
+    profile_index = _get_profile_index()
+    profiles = _nearest_profiles_from_index(
+        profile_index,
+        latitude=query_latitude,
+        longitude=query_longitude,
+        limit=result_limit,
+    )
 
     return {
         "source": SOURCE,
@@ -166,6 +158,69 @@ def _get_dataset() -> xr.Dataset:
     return _DATASET
 
 
+def _get_profile_index() -> dict[str, np.ndarray]:
+    """Load and cache the persistent historical profile-level spatial index."""
+    global _PROFILE_INDEX
+    if _PROFILE_INDEX is not None:
+        return _PROFILE_INDEX
+    if not PROFILE_INDEX_PATH.exists():
+        raise FileNotFoundError(
+            "Historical ARGO profile index is missing. Build it once with: "
+            "python argo/build_profile_index.py"
+        )
+
+    with np.load(PROFILE_INDEX_PATH, allow_pickle=False) as loaded:
+        required = ("platform_number", "cycle_number", "latitude", "longitude", "observation_time")
+        missing = [name for name in required if name not in loaded.files]
+        if missing:
+            raise ValueError(
+                "Historical ARGO profile index is missing field(s): "
+                f"{', '.join(missing)}. Rebuild with: python argo/build_profile_index.py"
+            )
+        _PROFILE_INDEX = {name: loaded[name] for name in required}
+
+    return _PROFILE_INDEX
+
+
+def _nearest_profiles_from_index(
+    profile_index: dict[str, np.ndarray],
+    *,
+    latitude: float,
+    longitude: float,
+    limit: int,
+) -> list[dict[str, Any]]:
+    latitudes = np.asarray(profile_index["latitude"], dtype=float)
+    longitudes = np.asarray(profile_index["longitude"], dtype=float)
+    if latitudes.size == 0:
+        return []
+
+    distances = _haversine_distances_km(latitude, longitude, latitudes, longitudes)
+    finite = np.isfinite(distances)
+    if not finite.any():
+        return []
+
+    finite_indices = np.flatnonzero(finite)
+    finite_distances = distances[finite]
+    selected_count = min(limit, finite_distances.size)
+    nearest_positions = np.argpartition(finite_distances, selected_count - 1)[
+        :selected_count
+    ]
+    nearest_indices = finite_indices[nearest_positions]
+    nearest_indices = nearest_indices[np.argsort(distances[nearest_indices])]
+
+    return [
+        {
+            "platform_number": _json_value(profile_index["platform_number"][idx]),
+            "cycle_number": _json_value(profile_index["cycle_number"][idx]),
+            "latitude": _json_float(latitudes[idx]),
+            "longitude": _json_float(longitudes[idx]),
+            "time": _json_value(profile_index["observation_time"][idx]),
+            "distance_km": _json_float(distances[idx]),
+        }
+        for idx in nearest_indices
+    ]
+
+
 def _get_float_data_or_raise(dataset: xr.Dataset, platform_number: int) -> xr.Dataset:
     """Return float observations or raise a clear unknown-float error."""
     try:
@@ -183,41 +238,6 @@ def _get_profile_or_raise(dataset: xr.Dataset, platform_number: int, cycle_numbe
         raise ValueError(
             f"Unknown ARGO cycle {cycle_number!r} for float {platform_number!r}"
         ) from exc
-
-
-def _profile_index(dataset: xr.Dataset) -> list[dict[str, Any]]:
-    """Return one metadata row per float-cycle profile."""
-    required = ("PLATFORM_NUMBER", "CYCLE_NUMBER", "LATITUDE", "LONGITUDE")
-    missing = [name for name in required if name not in dataset.variables]
-    if missing:
-        raise ValueError(f"Dataset is missing required variable(s): {', '.join(missing)}")
-
-    platform = np.asarray(dataset["PLATFORM_NUMBER"].values).ravel()
-    cycle = np.asarray(dataset["CYCLE_NUMBER"].values).ravel()
-    latitude = np.asarray(dataset["LATITUDE"].values, dtype=float).ravel()
-    longitude = np.asarray(dataset["LONGITUDE"].values, dtype=float).ravel()
-    time_values = np.asarray(dataset["TIME"].values).ravel() if "TIME" in dataset else None
-
-    profiles: dict[tuple[Any, Any], dict[str, Any]] = {}
-    for idx, (platform_value, cycle_value, lat_value, lon_value) in enumerate(
-        zip(platform, cycle, latitude, longitude)
-    ):
-        if not np.isfinite(lat_value) or not np.isfinite(lon_value):
-            continue
-
-        key = (_json_value(platform_value), _json_value(cycle_value))
-        if key in profiles:
-            continue
-
-        profiles[key] = {
-            "platform_number": key[0],
-            "cycle_number": key[1],
-            "latitude": _json_float(lat_value),
-            "longitude": _json_float(lon_value),
-            "time": _json_value(time_values[idx]) if time_values is not None else None,
-        }
-
-    return list(profiles.values())
 
 
 def _first_valid(dataset: xr.Dataset, variable_name: str) -> Any:
@@ -313,6 +333,26 @@ def _haversine_km(lat_a: float, lon_a: float, lat_b: float, lon_b: float) -> flo
         + np.cos(lat1) * np.cos(lat2) * np.sin(delta_lon / 2) ** 2
     )
     return float(2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(haversine)))
+
+
+def _haversine_distances_km(
+    latitude: float,
+    longitude: float,
+    latitudes: np.ndarray,
+    longitudes: np.ndarray,
+) -> np.ndarray:
+    """Calculate vectorized great-circle distances in kilometers."""
+    lat1 = np.radians(latitude)
+    lon1 = np.radians(longitude)
+    lat2 = np.radians(latitudes)
+    lon2 = np.radians(longitudes)
+    delta_lat = lat2 - lat1
+    delta_lon = lon2 - lon1
+    haversine = (
+        np.sin(delta_lat / 2) ** 2
+        + np.cos(lat1) * np.cos(lat2) * np.sin(delta_lon / 2) ** 2
+    )
+    return 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(haversine))
 
 
 def _json_value(value: Any) -> Any:
