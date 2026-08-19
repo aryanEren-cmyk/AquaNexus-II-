@@ -1,0 +1,20 @@
+:root {
+  --abyss-0: #050b14;
+  --abyss-1: #081422;
+  --abyss-2: #0c1c2e;
+  --panel: #0e2032;
+  --panel-hi: #13293e;
+  --line: #1c3348;
+  --text: #e8f1f2;
+  --text-dim: #a9bcc9;
+  --text-mute: #7d96a8;
+  --cyan: #2dd4bf;
+  --coral: #ff6b4a;
+  --gold: #e0b34d;
+  --violet: #8b7fd6;
+  --topbar-height: 64px;
+  --sidebar-width: 78px;
+  --font-display: 'Space Grotesk', Inter, system-ui, sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+}
