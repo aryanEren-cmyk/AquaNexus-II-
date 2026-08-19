@@ -1,0 +1,132 @@
+{
+  "description": "Individually cited, precisely-located mineral/hydrothermal discoveries within the AquaNexus ARGO coverage region (60-100E, 0-30N). Each site is sourced from a specific peer-reviewed publication, not an approximated zone.",
+  "sites": [
+    {
+      "id": "wocan-hydrothermal-cd marine-mineralsfield",
+      "name": "Wocan Hydrothermal Field",
+      "latitude": 6.367,
+      "longitude": 60.517,
+      "depth_m": 3000,
+      "mineral_type": "polymetallic_sulphides",
+      "metals": [
+        "copper",
+        "iron",
+        "silver"
+      ],
+      "discovered": 2013,
+      "discovery_method": "Chinese DY28th research cruise",
+      "citation": "Han et al., mineralogy/trace element study, Wocan Hydrothermal Field (WHF, 6\u00b022'N/60\u00b031'E), Carlsberg Ridge, Indian Ocean. ScienceDirect.",
+      "notes": "Sulfide mound ~260m diameter, ~50m height. Southern area Cu-rich sulfides, northern area Fe-rich sulfides.",
+      "source_url": "https://www.sciencedirect.com/science/article/abs/pii/S0169136816305042"
+    },
+    {
+      "id": "tianshi-hydrothermal-field",
+      "name": "Tianshi Hydrothermal Field",
+      "latitude": 2.65,
+      "longitude": 63.0,
+      "depth_m": null,
+      "mineral_type": "basalt_hosted_hydrothermal_sulphides",
+      "metals": [
+        "iron",
+        "copper"
+      ],
+      "discovered": 2018,
+      "discovery_method": "Plume anomaly surveys, expeditions 2012 and 2018",
+      "citation": "Qiu, Z., Wang, Y., Han, X. et al. (2024). Discovery and characterization of a new hydrothermal field at 2N on the slow-spreading Carlsberg Ridge. Journal of Oceanology and Limnology, 42, 1106-1118. DOI: 10.1007/s00343-023-3076-7",
+      "notes": "Located on rift valley wall between 2 deg 35'N and 2 deg 43'N. Hydrothermal Fe flux 30-155 mg/(cm2*ka), Cu flux 0.59-11.49 mg/(cm2*ka)."
+    },
+    {
+      "id": "carlsberg-3-42n-plume",
+      "name": "Carlsberg Ridge 3.7N Hydrothermal Plume Site",
+      "latitude": 3.7,
+      "longitude": 63.667,
+      "depth_m": null,
+      "mineral_type": "polymetallic_sulphides",
+      "metals": [
+        "copper",
+        "zinc",
+        "lead"
+      ],
+      "discovered": 2012,
+      "discovery_method": "Plume detection (Ray et al. 2012), sulfide sampling (Tao et al. 2013)",
+      "citation": "Ray, D. et al. (2013a), hydrothermal plumes identified near 3\u00b042'N, 63\u00b040'E on Carlsberg Ridge via optical backscatter, thermal anomalies, and chemical signatures (dE, 3He, Mn).",
+      "notes": "Hydrothermal plume discovered near 3 deg 42'N; polymetallic sulfides physically sampled in 2012.",
+      "source_url": "https://www.sciencedirect.com/science/article/abs/pii/S0169136820311562"
+    },
+    {
+      "id": "andaman-sm13-seamount",
+      "name": "Andaman Seamount SM-13 (Nicobar volcanic arc)",
+      "latitude": 7.9,
+      "longitude": 94.04,
+      "depth_m": null,
+      "mineral_type": "hydrothermal_mineralization",
+      "metals": [
+        "silica",
+        "barium",
+        "arsenic_sulphide"
+      ],
+      "discovered": 2021,
+      "discovery_method": "RV Sindhu Sadhana survey of 13 seamounts (SM1-SM13), Nov 2021",
+      "citation": "Peketi, A., Sriram, G., Mazumdar, A. et al. (2024). Hydrothermal amorphous silica, barite and orpiment from the crater area of seamount (SM-13) off Nicobar island, Andaman sea. Marine and Petroleum Geology, 160, 106606. DOI: 10.1016/j.marpetgeo.2023.106606",
+      "notes": "Only 1 of 13 surveyed seamounts (SM-13) showed confirmed hydrothermal evidence: amorphous silica, barite, orpiment, chemosymbiotic Bathymodiolus organisms, CO2-rich plumes.",
+      "source_url": "https://doi.org/10.1016/j.marpetgeo.2023.106606"
+    },
+    {
+      "id": "durgarajupatnam-placer",
+      "name": "Durgarajupatnam Coast Heavy Mineral Placer",
+      "latitude": 14.02,
+      "longitude": 80.14,
+      "depth_m": null,
+      "mineral_type": "heavy_mineral_placer_sands",
+      "metals": [
+        "titanium_ilmenite",
+        "zircon",
+        "monazite",
+        "garnet"
+      ],
+      "discovered": 2016,
+      "discovery_method": "Geological Survey of India (GSI) coastal survey",
+      "citation": "Delineation of the general framework and quantification of heavy minerals distribution at Durgarajupatnam coast, Nellore, East Coast of India. ScienceDirect, 2024. Coordinates 14 deg 0'10\"-14 deg 02'30\"N, 80 deg 08'20\"-80 deg 19'00\"E, GSI toposheets 66B3,4 and 66C1,5.",
+      "notes": "Bay of Bengal coastal placer, Nellore district Andhra Pradesh. Opaque mineral content averaged 10.63% in June 2016 survey."
+    },
+    {
+      "id": "chhatrapur-placer",
+      "name": "Chhatrapur Beach Placer Deposit",
+      "latitude": 19.3,
+      "longitude": 85.0,
+      "depth_m": null,
+      "mineral_type": "monazite_heavy_mineral_placer",
+      "metals": [
+        "monazite_REE",
+        "ilmenite",
+        "rutile",
+        "garnet",
+        "sillimanite",
+        "zircon"
+      ],
+      "discovered": null,
+      "discovery_method": "Atomic Minerals Division / GSI beach placer exploration",
+      "citation": "Geochemical studies of monazite sands of Chhatrapur beach placer deposit of Orissa, India by PIXE and EDXRF method. ScienceDirect. One of India's well-known REE-bearing placer deposits, Ganjam District, Orissa.",
+      "notes": "Bay of Bengal coastal placer. Monazite sands carry significant thorium/uranium/REE content; part of India's officially estimated beach sand mineral (BSM) resource inventory."
+    },
+    {
+      "id": "chavara-placer",
+      "name": "Chavara Beach Placer Deposit",
+      "latitude": 8.8,
+      "longitude": 76.53,
+      "depth_m": null,
+      "mineral_type": "ilmenite_heavy_mineral_placer",
+      "metals": [
+        "ilmenite",
+        "rutile",
+        "monazite",
+        "zircon",
+        "garnet"
+      ],
+      "discovered": null,
+      "discovery_method": "Atomic Minerals Division / Indian Rare Earths Ltd exploration",
+      "citation": "Widely documented in Indian placer mineral literature (e.g. Beach Placer Deposits of India, their Distribution, Mineralogy and Sustainable-Mining, academia.edu). One of India's largest and oldest-worked ilmenite-monazite beach placers.",
+      "notes": "Arabian Sea coast, Kollam district, Kerala. Indian ilmenite here typically 50-60% TiO2."
+    }
+  ]
+}

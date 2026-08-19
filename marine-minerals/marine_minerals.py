@@ -5,11 +5,13 @@ Owner: Nethra (feature/marine-minerals)
 Public interface for the AI Agent:
     get_mineral_insights(lat, lon, radius_km=50) -> dict
 
-Data sources:
-  1. ccz_real_stations.json  - real measured seafloor samples (CCZ only)
+Data sources (checked in priority order):
+  1. ccz_real_stations.json   - real measured seafloor samples (CCZ only)
      Source: Schoening & Gazis (2019), GEOMAR/PANGAEA, CC-BY-NC-4.0
      DOI: https://doi.org/10.1594/PANGAEA.904967
-  2. mineral_deposits.json   - broader region estimates (worldwide, approximate)
+  2. real_cited_sites.json    - individually cited real discoveries (Carlsberg
+     Ridge, Andaman Sea) - each site sourced from a specific peer-reviewed paper
+  3. mineral_deposits.json    - broader region estimates (worldwide, approximate)
 """
 
 import json
@@ -20,6 +22,9 @@ DATA_DIR = Path(__file__).parent
 
 with open(DATA_DIR / "ccz_real_stations.json") as f:
     _STATION_DATA = json.load(f)
+
+with open(DATA_DIR / "real_cited_sites.json") as f:
+    _CITED_SITES_DATA = json.load(f)
 
 with open(DATA_DIR / "mineral_deposits.json") as f:
     _REGION_DATA = json.load(f)
@@ -44,6 +49,29 @@ def _nearby_stations(lat, lon, radius_km):
             matches.append({**s, "distance_km": round(d, 1)})
     return sorted(matches, key=lambda s: s["distance_km"])
 
+
+def _nearby_cited_sites(lat, lon, radius_km):
+    """Return individually-cited real sites within radius_km, sorted nearest-first."""
+    matches = []
+    for s in _CITED_SITES_DATA["sites"]:
+        d = _haversine_km(lat, lon, s["latitude"], s["longitude"])
+        if d <= radius_km:
+            matches.append({**s, "distance_km": round(d, 1)})
+    return sorted(matches, key=lambda s: s["distance_km"])
+
+
+def _summarize_cited_sites(sites, ocean_conditions=None):
+    parts = []
+    for s in sites:
+        metals = ", ".join(s["metals"])
+        year_clause = f"found {s['discovered']} via {s['discovery_method']}" if s.get("discovered") else f"documented via {s['discovery_method']}"
+        parts.append(
+            f"{s['name']} ({s['distance_km']} km away): a real, individually cited "
+            f"discovery of {s['mineral_type'].replace('_', ' ')} (metals: {metals}), "
+            f"{year_clause}. Source: {s['citation']}"
+        )
+    base = " ".join(parts)
+    return base + _ocean_conditions_note(ocean_conditions)
 
 def _matching_regions(lat, lon):
     """Return broad region entries whose bounding box contains (lat, lon)."""
@@ -127,6 +155,15 @@ def get_mineral_insights(lat, lon, radius_km=50, ocean_conditions=None):
             "source": "verified_station",
             "deposits": stations,
             "summary": _summarize_stations(stations, ocean_conditions),
+        }
+
+    cited_sites = _nearby_cited_sites(lat, lon, radius_km)
+    if cited_sites:
+        return {
+            "query": {"lat": lat, "lon": lon, "radius_km": radius_km},
+            "source": "verified_cited_site",
+            "deposits": cited_sites,
+            "summary": _summarize_cited_sites(cited_sites, ocean_conditions),
         }
 
     regions = _matching_regions(lat, lon)
