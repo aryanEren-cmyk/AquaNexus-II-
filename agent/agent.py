@@ -127,6 +127,40 @@ provided by the mineral tool whenever they are useful to the answer.
 Do not invent citations or source information that the tool did not return.
 
 
+
+Oil-spill / SAR evidence rules:
+
+For questions about possible oil spills, oil slicks, petroleum leakage,
+slick-like ocean anomalies, or Sentinel-1 slick screening,
+use get_oil_slick_insights.
+
+Oil-spill screening uses Sentinel-1 SAR satellite remote sensing.
+Do not describe ARGO as detecting oil spills.
+
+A "SAR dark-slick candidate" or "slick-like SAR anomaly" is not a
+confirmed oil spill and is not proof of petroleum.
+
+Low backscatter can also be caused by calm water, natural surfactants,
+biological films, rain effects, current boundaries, atmospheric effects,
+and other look-alike conditions.
+
+If the tool returns no_recent_usable_scene, say that no compatible recent
+Sentinel-1 scene was available and that no screening was performed.
+Never turn missing satellite coverage into evidence that oil is absent.
+
+If the tool returns no candidates, say that no candidate met the current
+heuristic in the analyzed patch. Do not claim that oil is absent.
+
+If an analysis target was shifted from the requested place to a nearby
+water-dominated patch, preserve that distinction and mention the shift
+when relevant. Do not imply that the named place itself moved.
+
+Never generate or invent an oil-spill confidence percentage.
+
+Preserve Sentinel-1 acquisition times, candidate counts, candidate
+coordinates, water coverage, provenance, and scientific caveats from
+the tool result when they are useful to the answer.
+
 Prefer concise evidence-based answers.
 
 Return concise prose for the user.
@@ -252,7 +286,12 @@ def run_agent(user_message: str) -> dict[str, Any]:
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "name": tool_name,
-                        "content": json.dumps(result),
+                        "content": json.dumps(
+                            _tool_result_for_llm(
+                                tool_name,
+                                result,
+                            )
+                        ),
                     }
                 )
 
@@ -299,6 +338,103 @@ def run_agent(user_message: str) -> dict[str, Any]:
             tools_used=tools_used,
             evidence=evidence,
         )
+
+
+
+def _tool_result_for_llm(
+    tool_name: str,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Return a compact tool result for the LLM while preserving the full
+    deterministic result separately in the API evidence payload.
+
+    Large scientific payloads can exceed provider token-per-minute limits
+    when echoed back into the model. The model only needs the evidence
+    required to write a faithful user-facing explanation.
+    """
+
+    if tool_name != "get_oil_slick_insights":
+        return result
+
+    if not isinstance(result, dict):
+        return {"status": "invalid_tool_result"}
+
+    analysis_target = result.get("analysis_target") or {}
+    satellite = result.get("satellite_observation") or {}
+    water = result.get("water_context") or {}
+    screening = result.get("screening") or {}
+    interpretation = result.get("interpretation") or {}
+    location = result.get("location") or {}
+
+    candidate_locations = result.get("candidate_locations") or []
+
+    # A few representative candidate positions are enough for the LLM
+    # explanation. The complete candidate set remains available in
+    # response["evidence"] for the frontend/map.
+    representative_candidates = candidate_locations[:5]
+
+    compact: dict[str, Any] = {
+        "status": result.get("status"),
+        "screening_performed": result.get("screening_performed"),
+        "location": {
+            "display_name": location.get("display_name"),
+            "latitude": location.get("latitude"),
+            "longitude": location.get("longitude"),
+        },
+        "analysis_target": {
+            "latitude": analysis_target.get("latitude"),
+            "longitude": analysis_target.get("longitude"),
+            "shifted_from_requested_location": analysis_target.get(
+                "shifted_from_requested_location"
+            ),
+            "shift_distance_km": analysis_target.get("shift_distance_km"),
+            "selection_status": analysis_target.get("selection_status"),
+            "estimated_water_fraction": analysis_target.get(
+                "estimated_water_fraction"
+            ),
+        },
+        "satellite_observation": {
+            "scene_id": satellite.get("scene_id"),
+            "acquisition_time": satellite.get("acquisition_time"),
+            "platform": satellite.get("platform"),
+            "instrument_mode": satellite.get("instrument_mode"),
+            "polarizations": satellite.get("polarizations"),
+        },
+        "water_context": {
+            "water_fraction": water.get("water_fraction"),
+            "reference_year": (
+                (water.get("source") or {}).get("reference_year")
+                if isinstance(water.get("source"), dict)
+                else None
+            ),
+        },
+        "screening": {
+            "classification": screening.get("classification"),
+            "analysis_context": screening.get("analysis_context"),
+            "statistics": screening.get("statistics"),
+            "thresholds": screening.get("thresholds"),
+        },
+        "candidate_count": result.get("candidate_count"),
+        "representative_candidate_locations": representative_candidates,
+        "representative_candidate_count": len(representative_candidates),
+        "candidate_locations_truncated_for_llm": (
+            len(candidate_locations) > len(representative_candidates)
+        ),
+        "summary": result.get("summary"),
+        "interpretation": {
+            "evidence_type": interpretation.get("evidence_type"),
+            "oil_confirmation": interpretation.get("oil_confirmation"),
+            "confidence_score": interpretation.get("confidence_score"),
+            "meaning": interpretation.get("meaning"),
+            "not_equivalent_to": interpretation.get("not_equivalent_to"),
+        },
+        "provenance": result.get("provenance"),
+        "data_notes": (result.get("data_notes") or [])[:8],
+        "runtime_seconds": result.get("runtime_seconds"),
+    }
+
+    return compact
 
 
 def _parse_tool_arguments(
@@ -393,6 +529,11 @@ def _modules_from_tools(
         # Marine Minerals module
         # --------------------------------
         "get_mineral_insights": "minerals",
+
+        # --------------------------------
+        # Oil Spill / Sentinel-1 SAR module
+        # --------------------------------
+        "get_oil_slick_insights": "oil_spill",
     }
 
     modules: list[str] = []

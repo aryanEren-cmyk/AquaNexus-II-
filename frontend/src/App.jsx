@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import DataPage from './pages/DataPage.jsx'
 import EvidencePage from './pages/EvidencePage.jsx'
 import MapPage from './pages/MapPage.jsx'
+import OilSpillPage from './pages/OilSpillPage.jsx'
 import ProfilesPage from './pages/ProfilesPage.jsx'
 
 import './styles/variables.css'
@@ -20,6 +21,7 @@ const MODULES = [
   'Charts',
   'Map',
   'Profiles',
+  'Oil Spill',
   'Alerts',
   'Evidence',
   'Data',
@@ -48,6 +50,8 @@ function App() {
             <MapPage />
           ) : activeModule === 'Profiles' ? (
             <ProfilesPage />
+          ) : activeModule === 'Oil Spill' ? (
+            <OilSpillPage />
           ) : activeModule === 'Alerts' ? (
             <AlertsPage />
           ) : activeModule === 'Evidence' ? (

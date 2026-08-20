@@ -105,3 +105,29 @@ class AlertScanRequest(OceanConditionsRequest):
     """Request payload for deterministic AquaNexus alert scanning."""
 
     pass
+
+class OilSpillInsightsRequest(BaseModel):
+    """Request payload for Sentinel-1 SAR slick-candidate screening."""
+
+    location: str
+
+    scene_days: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+    )
+
+    @field_validator("location")
+    @classmethod
+    def validate_location(
+        cls,
+        value: str,
+    ) -> str:
+        location = value.strip()
+
+        if not location:
+            raise ValueError(
+                "location cannot be empty"
+            )
+
+        return location

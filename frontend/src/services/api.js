@@ -43,6 +43,19 @@ export async function getMineralInsights(
   })
 }
 
+export async function getOilSpillInsights(
+  location,
+  scene_days = 30,
+) {
+  return request('/api/oil/insights', {
+    method: 'POST',
+    body: JSON.stringify({
+      location,
+      scene_days,
+    }),
+  })
+}
+
 export async function scanAlerts(
   location,
   depth_m = 0,

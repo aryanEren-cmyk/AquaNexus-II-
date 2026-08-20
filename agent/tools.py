@@ -1,13 +1,14 @@
 """LLM tool schemas and deterministic AquaNexus tool execution."""
 
 from __future__ import annotations
-from marine_minerals.service import get_mineral_insights_for_location
 
 from dataclasses import dataclass
 from typing import Any, Callable
 
 from argo.tools import argo_tools
+from marine_minerals.service import get_mineral_insights_for_location
 from ocean.conditions import get_ocean_conditions
+from oil_spill import get_oil_slick_insights
 
 
 ToolFunction = Callable[..., dict[str, Any]]
@@ -113,6 +114,40 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         ("location",),
     ),
 ),
+
+    "get_oil_slick_insights": ToolDefinition(
+        function=get_oil_slick_insights,
+        required=("location",),
+        schema=_schema(
+            "get_oil_slick_insights",
+            (
+                "Screen recent Sentinel-1 SAR imagery for dark-slick candidate "
+                "regions near a named coastal place, sea, region or coordinate "
+                "within AquaNexus coverage. Use for questions about possible oil "
+                "spills, oil slicks, petroleum leakage or slick-like SAR anomalies. "
+                "The result is candidate screening only and does not confirm oil."
+            ),
+            {
+                "location": {
+                    "type": "string",
+                    "description": (
+                        "Named place, coastal region, sea or coordinate such as "
+                        "Mumbai, Kochi, Arabian Sea, or 19.05N 72.81E."
+                    ),
+                },
+                "scene_days": {
+                    "type": "integer",
+                    "description": (
+                        "Recent Sentinel-1 scene-search window in days. "
+                        "Defaults to 30."
+                    ),
+                    "minimum": 1,
+                    "maximum": 365,
+                },
+            },
+            ("location",),
+        ),
+    ),
     "get_float_profile": ToolDefinition(
         function=argo_tools.get_float_profile,
         required=("platform_number", "cycle_number"),

@@ -26,9 +26,15 @@ from backend.schemas import (
     ChatRequest,
     OceanConditionsRequest,
     MineralInsightsRequest,
+    OilSpillInsightsRequest,
+)
+
+from oil_spill import (
+    OilSpillServiceError,
+    get_oil_slick_insights,
 )
 from copernicus.present_state import PRESENT_DATA_PATH
-from location.resolver import LocationResolverError
+from location.resolver import LocationResolverError, resolve_location
 from ocean.conditions import OceanConditionsError, get_ocean_conditions
 
 
@@ -269,6 +275,75 @@ def alert_scan(
             },
         ) from exc
 
+# ============================================================
+# OIL SPILL / SAR SLICK-CANDIDATE SCREENING
+# ============================================================
+
+
+@app.post("/api/oil/insights")
+def oil_spill_insights(
+    request: OilSpillInsightsRequest,
+) -> dict[str, Any]:
+    """
+    Screen recent Sentinel-1 SAR imagery for dark-slick candidates.
+
+    Returned candidates are low-backscatter SAR anomalies.
+    They are not confirmed oil spills or verified petroleum leakage.
+    """
+
+    try:
+        # Resolve once here so invalid/out-of-coverage locations
+        # remain a client error rather than an upstream service error.
+        resolve_location(
+            request.location
+        )
+
+        return get_oil_slick_insights(
+            request.location,
+            scene_days=request.scene_days,
+        )
+
+    except LocationResolverError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "bad_request",
+                "message": _safe_message(exc),
+            },
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "bad_request",
+                "message": _safe_message(exc),
+            },
+        ) from exc
+
+    except OilSpillServiceError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "oil_spill_service_unavailable",
+                "message": (
+                    "Oil Spill satellite analysis could not "
+                    "be completed at this time."
+                ),
+            },
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": (
+                    "An unexpected Oil Spill analysis "
+                    "error occurred."
+                ),
+            },
+        ) from exc
 
 # ============================================================
 # ARGO PROFILE API
@@ -461,6 +536,8 @@ def _safe_message(
         "COPERNICUSMARINE_PASSWORD",
         "COPERNICUSMARINE_SERVICE_USERNAME",
         "COPERNICUSMARINE_SERVICE_PASSWORD",
+        "COPERNICUS_SH_CLIENT_ID",
+        "COPERNICUS_SH_CLIENT_SECRET",
     ):
         secret_value = os.getenv(secret_name)
 
