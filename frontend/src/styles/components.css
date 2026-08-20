@@ -2589,3 +2589,113 @@
     text-align: left;
   }
 }
+
+/* ===================== MARINE MINERALS MAP LAYER ===================== */
+
+/* OceanMap now has one extra numeric field for the mineral search radius. */
+.map-control-bar {
+  grid-template-columns: minmax(180px, 1fr) 110px 135px 135px auto;
+}
+
+.marker-mineral-site span {
+  border-radius: 3px;
+  border-color: var(--violet);
+  background: var(--violet);
+  box-shadow:
+    0 0 0 4px rgba(139, 127, 214, 0.12),
+    0 0 18px rgba(139, 127, 214, 0.42);
+  transform: rotate(45deg);
+}
+
+.marker-mineral-sample span {
+  border-radius: 50%;
+  border-color: var(--gold);
+  background: var(--gold);
+  box-shadow:
+    0 0 0 4px rgba(224, 179, 77, 0.12),
+    0 0 18px rgba(224, 179, 77, 0.38);
+}
+
+.legend-symbol.is-mineral-site {
+  border-color: var(--violet);
+  background: var(--violet);
+  transform: rotate(45deg);
+}
+
+.legend-symbol.is-mineral-sample {
+  border-radius: 50%;
+  border-color: var(--gold);
+  background: var(--gold);
+}
+
+.legend-symbol.is-mineral-region {
+  border: 1px dashed var(--violet);
+  background: rgba(139, 127, 214, 0.14);
+}
+
+.mineral-evidence-entry {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(28, 51, 72, 0.7);
+}
+
+.mineral-evidence-entry strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.mineral-evidence-entry span {
+  color: var(--violet);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.mineral-evidence-entry p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mineral-source-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.mineral-source-link:hover {
+  text-decoration: underline;
+}
+
+.mineral-context-warning,
+.mineral-data-note {
+  border-left: 2px solid rgba(139, 127, 214, 0.7);
+  padding-left: 8px;
+}
+
+@media (max-width: 1180px) {
+  .map-control-bar {
+    grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(105px, 1fr));
+  }
+
+  .map-control-bar > button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .map-control-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .map-control-bar > button {
+    grid-column: auto;
+  }
+}

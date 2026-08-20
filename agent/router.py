@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
-SUPPORTED_MODULES = {"argo"}
+SUPPORTED_MODULES = {"argo", "minerals"}
 FUTURE_MODULES = {"oil_spill", "minerals", "cables"}
 
 ARGO_KEYWORDS = {

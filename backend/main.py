@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import os
 from typing import Any
 
+from marine_minerals.service import get_mineral_insights_for_location
 from fastapi import FastAPI, HTTPException, Path
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,7 @@ from backend.schemas import (
     AlertScanRequest,
     ChatRequest,
     OceanConditionsRequest,
+    MineralInsightsRequest,
 )
 from copernicus.present_state import PRESENT_DATA_PATH
 from location.resolver import LocationResolverError
@@ -184,6 +186,44 @@ def ocean_conditions(
             },
         ) from exc
 
+
+# ============================================================
+# MARINE MINERALS
+# ============================================================
+
+
+@app.post("/api/minerals/insights")
+def mineral_insights(
+    request: MineralInsightsRequest,
+) -> dict[str, Any]:
+    """Return deterministic marine-mineral evidence for a location."""
+
+    try:
+        return get_mineral_insights_for_location(
+            request.location,
+            radius_km=request.radius_km,
+        )
+
+    except (
+        LocationResolverError,
+        ValueError,
+    ) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "bad_request",
+                "message": _safe_message(exc),
+            },
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": "Unable to retrieve marine-mineral evidence.",
+            },
+        ) from exc
 
 # ============================================================
 # ALERTS

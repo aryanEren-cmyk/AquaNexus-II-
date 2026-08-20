@@ -1,6 +1,7 @@
 """LLM tool schemas and deterministic AquaNexus tool execution."""
 
 from __future__ import annotations
+from marine_minerals.service import get_mineral_insights_for_location
 
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -81,6 +82,37 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
             ("location",),
         ),
     ),
+
+    "get_mineral_insights": ToolDefinition(
+    function=get_mineral_insights_for_location,
+    required=("location",),
+    schema=_schema(
+        "get_mineral_insights",
+        (
+            "Retrieve deterministic marine-mineral evidence for a named place, "
+            "sea, region or coordinate within AquaNexus coverage. Use for "
+            "questions about polymetallic nodules, hydrothermal mineralization, "
+            "polymetallic sulphides, phosphorites, placer deposits, mineral "
+            "zones, seabed minerals or known mineral discoveries. Results "
+            "distinguish direct seafloor samples, individually cited literature "
+            "sites and approximate mineral-region context."
+        ),
+        {
+            "location": {
+                "type": "string",
+                "description": (
+                    "Named place, sea, region or coordinate such as "
+                    "Arabian Sea, Andaman Sea, or 7.9N 94.04E."
+                ),
+            },
+            "radius_km": _number(
+                "Search radius around point locations in kilometers. "
+                "Defaults to 50 km."
+            ),
+        },
+        ("location",),
+    ),
+),
     "get_float_profile": ToolDefinition(
         function=argo_tools.get_float_profile,
         required=("platform_number", "cycle_number"),

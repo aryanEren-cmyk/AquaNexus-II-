@@ -77,6 +77,29 @@ class OceanConditionsRequest(BaseModel):
 
         return value
 
+class MineralInsightsRequest(BaseModel):
+    """Request payload for deterministic marine-mineral evidence."""
+
+    location: str
+    radius_km: float = 50
+
+    @field_validator("location")
+    @classmethod
+    def validate_location(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("location cannot be empty.")
+
+        return value
+
+    @field_validator("radius_km")
+    @classmethod
+    def validate_radius(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("radius_km must be greater than 0.")
+
+        return value
 
 class AlertScanRequest(OceanConditionsRequest):
     """Request payload for deterministic AquaNexus alert scanning."""

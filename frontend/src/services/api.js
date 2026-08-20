@@ -1,5 +1,6 @@
 const API_BASE_URL =
-  import.meta.env.VITE_AQUANEXUS_API_URL || 'http://127.0.0.1:8000'
+  import.meta.env.VITE_AQUANEXUS_API_URL ||
+  'http://127.0.0.1:8000'
 
 export async function getHealth() {
   return request('/api/health')
@@ -8,7 +9,9 @@ export async function getHealth() {
 export async function sendChatMessage(message) {
   return request('/api/chat', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({
+      message,
+    }),
   })
 }
 
@@ -23,6 +26,19 @@ export async function getOceanConditions(
       location,
       depth_m,
       argo_radius_km,
+    }),
+  })
+}
+
+export async function getMineralInsights(
+  location,
+  radius_km = 50,
+) {
+  return request('/api/minerals/insights', {
+    method: 'POST',
+    body: JSON.stringify({
+      location,
+      radius_km,
     }),
   })
 }
@@ -46,25 +62,37 @@ export async function getArgoCycles(floatId) {
   return request(`/api/argo/cycles/${floatId}`)
 }
 
-export async function getArgoProfile(floatId, cycle) {
-  return request(`/api/argo/profile/${floatId}/${cycle}`)
+export async function getArgoProfile(
+  floatId,
+  cycle,
+) {
+  return request(
+    `/api/argo/profile/${floatId}/${cycle}`,
+  )
 }
 
-async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
+async function request(
+  path,
+  options = {},
+) {
+  const response = await fetch(
+    `${API_BASE_URL}${path}`,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+      ...options,
     },
-    ...options,
-  })
+  )
 
   let payload = null
 
   try {
     payload = await response.json()
   } catch {
-    // Some successful responses may not include a JSON body.
+    // Some successful responses may not include
+    // a JSON body.
   }
 
   if (!response.ok) {

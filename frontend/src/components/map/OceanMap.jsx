@@ -13,7 +13,10 @@ import {
   useMap,
 } from 'react-leaflet'
 
-import { getOceanConditions } from '../../services/api.js'
+import {
+  getMineralInsights,
+  getOceanConditions,
+} from '../../services/api.js'
 
 const COVERAGE_BOUNDS = [
   [0, 60],
@@ -33,8 +36,10 @@ function OceanMap() {
   const [location, setLocation] = useState('Kochi')
   const [depth, setDepth] = useState(0)
   const [argoRadius, setArgoRadius] = useState(300)
+  const [mineralRadius, setMineralRadius] = useState(50)
 
   const [result, setResult] = useState(null)
+  const [mineralResult, setMineralResult] = useState(null)
 
   // Stores the exact form values that produced the current result.
   // This prevents unsent form edits from changing evidence metadata.
@@ -43,7 +48,10 @@ function OceanMap() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const mapData = useMemo(() => buildMapData(result), [result])
+  const mapData = useMemo(
+    () => buildMapData(result, mineralResult),
+    [result, mineralResult],
+  )
 
   async function analyzeRegion(event) {
     event?.preventDefault()
@@ -56,6 +64,7 @@ function OceanMap() {
 
     const parsedDepth = Number(depth)
     const parsedArgoRadius = Number(argoRadius)
+    const parsedMineralRadius = Number(mineralRadius)
 
     const querySnapshot = {
       location: trimmedLocation,
@@ -69,6 +78,11 @@ function OceanMap() {
         Number.isFinite(parsedArgoRadius) && parsedArgoRadius > 0
           ? parsedArgoRadius
           : 300,
+
+      mineralRadius:
+        Number.isFinite(parsedMineralRadius) && parsedMineralRadius > 0
+          ? parsedMineralRadius
+          : 50,
     }
 
     setIsLoading(true)
@@ -77,22 +91,57 @@ function OceanMap() {
     // Remove old scientific evidence immediately.
     // A failed/new query must never leave stale evidence visible.
     setResult(null)
+    setMineralResult(null)
     setSubmittedQuery(null)
 
     try {
-      const response = await getOceanConditions(
-        querySnapshot.location,
-        querySnapshot.depth,
-        querySnapshot.argoRadius,
-      )
+      const [oceanRequest, mineralRequest] = await Promise.allSettled([
+        getOceanConditions(
+          querySnapshot.location,
+          querySnapshot.depth,
+          querySnapshot.argoRadius,
+        ),
+        getMineralInsights(
+          querySnapshot.location,
+          querySnapshot.mineralRadius,
+        ),
+      ])
+
+      const warnings = []
+
+      if (oceanRequest.status === 'fulfilled') {
+        setResult(oceanRequest.value)
+      } else {
+        warnings.push(
+          `Ocean evidence unavailable: ${
+            oceanRequest.reason?.message || 'request failed'
+          }`,
+        )
+      }
+
+      if (mineralRequest.status === 'fulfilled') {
+        setMineralResult(mineralRequest.value)
+      } else {
+        warnings.push(
+          `Mineral evidence unavailable: ${
+            mineralRequest.reason?.message || 'request failed'
+          }`,
+        )
+      }
+
+      if (
+        oceanRequest.status === 'rejected' &&
+        mineralRequest.status === 'rejected'
+      ) {
+        setError(warnings.join(' · '))
+        return
+      }
 
       setSubmittedQuery(querySnapshot)
-      setResult(response)
-    } catch (requestError) {
-      setError(
-        requestError?.message ||
-          'Ocean data request failed.',
-      )
+
+      if (warnings.length) {
+        setError(`Partial result · ${warnings.join(' · ')}`)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -173,6 +222,24 @@ function OceanMap() {
             <em>km</em>
           </label>
 
+          <label className="map-number-field">
+            <span>Mineral radius</span>
+
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={mineralRadius}
+              onChange={(event) =>
+                setMineralRadius(event.target.value)
+              }
+              disabled={isLoading}
+              aria-label="Marine mineral radius in kilometers"
+            />
+
+            <em>km</em>
+          </label>
+
           <button
             type="submit"
             disabled={isLoading || !location.trim()}
@@ -200,7 +267,7 @@ function OceanMap() {
         {isLoading && (
           <div className="querying-indicator">
             <span />
-            QUERYING OCEAN DATA...
+            QUERYING OCEAN + MINERAL DATA...
           </div>
         )}
 
@@ -442,6 +509,135 @@ function OceanMap() {
                 </Popup>
               </Marker>
             )}
+
+            {/* Literature-reported marine mineral sites */}
+            {mapData.mineralSites.map(({ site, point }) => (
+              <Marker
+                key={`mineral-site-${site.id}`}
+                position={point}
+                icon={markerIcon('mineral-site')}
+                zIndexOffset={850}
+              >
+                <Popup>
+                  <PopupTitle>
+                    LITERATURE-REPORTED MINERAL SITE
+                  </PopupTitle>
+
+                  <PopupLine value={site.name} />
+
+                  <PopupLine
+                    label="Mineral type"
+                    value={formatMineralType(site.mineral_type)}
+                  />
+
+                  <PopupLine
+                    label="Metals / minerals"
+                    value={formatList(site.metals)}
+                  />
+
+                  <PopupLine
+                    label="Depth"
+                    value={formatMeters(site.depth_m)}
+                  />
+
+                  <PopupLine
+                    label="Distance"
+                    value={formatKm(site.distance_km)}
+                  />
+
+                  <PopupLine
+                    label="Citation"
+                    value={site.citation}
+                  />
+
+                  {site.source_url && (
+                    <a
+                      className="mineral-source-link"
+                      href={site.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open scientific source
+                    </a>
+                  )}
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Direct seafloor station samples, when available in coverage */}
+            {mapData.mineralSamples.map(({ sample, point }, index) => (
+              <Marker
+                key={`mineral-sample-${sample.id || sample.station || index}`}
+                position={point}
+                icon={markerIcon('mineral-sample')}
+                zIndexOffset={875}
+              >
+                <Popup>
+                  <PopupTitle>
+                    DIRECT SEAFLOOR SAMPLE
+                  </PopupTitle>
+
+                  <PopupLine
+                    label="Station"
+                    value={sample.station || sample.id}
+                  />
+
+                  <PopupLine
+                    label="Coverage"
+                    value={formatPercent(sample.seafloor_coverage_pct)}
+                  />
+
+                  <PopupLine
+                    label="Nodule mass"
+                    value={formatKg(sample.total_nodule_mass_kg)}
+                  />
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Approximate mineral regions are context only, not deposit boundaries. */}
+            {mapData.mineralRegions.map(({ region, bounds }) => (
+              <Rectangle
+                key={`mineral-region-${region.id}`}
+                bounds={bounds}
+                pathOptions={{
+                  color: '#8b7fd6',
+                  weight: 1.5,
+                  opacity: 0.8,
+                  fillColor: '#8b7fd6',
+                  fillOpacity: 0.06,
+                  dashArray: '8 6',
+                }}
+              >
+                <Popup>
+                  <PopupTitle>
+                    APPROXIMATE MINERAL REGION CONTEXT
+                  </PopupTitle>
+
+                  <PopupLine value={region.region_name} />
+
+                  <PopupLine
+                    label="Mineral type"
+                    value={formatMineralType(region.mineral_type)}
+                  />
+
+                  <PopupLine
+                    label="Primary metals"
+                    value={formatList(region.primary_metals)}
+                  />
+
+                  <PopupLine
+                    label="Depth range"
+                    value={formatDepthRange(region.depth_range_m)}
+                  />
+
+                  <p className="map-note">
+                    Approximate documented regional context only. This rectangle
+                    is not a confirmed deposit boundary.
+                  </p>
+                </Popup>
+              </Rectangle>
+            ))}
           </MapContainer>
 
           <MapLegend mapData={mapData} />
@@ -450,6 +646,7 @@ function OceanMap() {
 
       <MapIntelligencePanel
         result={result}
+        mineralResult={mineralResult}
         query={submittedQuery}
       />
     </div>
@@ -469,19 +666,22 @@ function FitMap({ mapData }) {
     }
 
     const points = [
-    mapData.requestedPoint,
-    mapData.gridPoint,
-    mapData.latestArgoPoint,
-  ].filter(Boolean)
+      mapData.requestedPoint,
+      mapData.gridPoint,
+      mapData.latestArgoPoint,
+      mapData.historicalPoint,
+      ...mapData.mineralSites.map((item) => item.point),
+      ...mapData.mineralSamples.map((item) => item.point),
+    ].filter(Boolean)
 
     if (points.length > 1) {
-    map.fitBounds(points, {
-      padding: [60, 60],
-      maxZoom: 10,
-    })
+      map.fitBounds(points, {
+        padding: [60, 60],
+        maxZoom: 10,
+      })
 
-    return
-  }
+      return
+    }
 
     if (points.length === 1) {
       map.setView(points[0], 7)
@@ -500,9 +700,10 @@ function FitMap({ mapData }) {
 
 function MapIntelligencePanel({
   result,
+  mineralResult,
   query,
 }) {
-  const location = result?.location
+  const location = result?.location || mineralResult?.location
   const state = result?.present_state
   const recentArgo = result?.latest_argo
 
@@ -519,7 +720,7 @@ function MapIntelligencePanel({
             Map Intelligence
           </p>
 
-          <h2>Ocean evidence</h2>
+          <h2>Ocean + mineral evidence</h2>
         </div>
 
         <Activity size={20} />
@@ -547,6 +748,13 @@ function MapIntelligencePanel({
             label="ARGO radius"
             value={formatKm(
               query?.argoRadius,
+            )}
+          />
+
+          <EvidenceLine
+            label="Mineral radius"
+            value={formatKm(
+              query?.mineralRadius,
             )}
           />
         </EvidenceBlock>
@@ -788,6 +996,64 @@ function MapIntelligencePanel({
           />
         </EvidenceBlock>
 
+        <EvidenceBlock title="Marine mineral evidence">
+          <EvidenceLine
+            label="Strongest evidence"
+            value={formatEvidenceType(
+              mineralResult?.strongest_evidence,
+            )}
+          />
+
+          <EvidenceLine
+            label="Direct samples"
+            value={mineralResult?.counts?.station_samples}
+          />
+
+          <EvidenceLine
+            label="Cited sites"
+            value={mineralResult?.counts?.cited_sites}
+          />
+
+          <EvidenceLine
+            label="Approx. regions"
+            value={mineralResult?.counts?.estimated_regions}
+          />
+
+          {mineralResult?.summary && (
+            <p className="map-note">
+              {mineralResult.summary}
+            </p>
+          )}
+
+          {(mineralResult?.cited_sites || []).map((site) => (
+            <div
+              className="mineral-evidence-entry"
+              key={`evidence-${site.id}`}
+            >
+              <strong>{site.name}</strong>
+              <span>{formatMineralType(site.mineral_type)}</span>
+              <p>{site.citation}</p>
+              {site.source_url && (
+                <a
+                  className="mineral-source-link"
+                  href={site.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Scientific source
+                </a>
+              )}
+            </div>
+          ))}
+
+          {(mineralResult?.estimated_regions || []).length > 0 && (
+            <p className="map-note mineral-context-warning">
+              Dashed mineral rectangles show approximate regional context only;
+              they are not confirmed deposit boundaries.
+            </p>
+          )}
+        </EvidenceBlock>
+
         <EvidenceBlock title="Data notes">
           {(
             result?.data_notes?.length
@@ -799,6 +1065,15 @@ function MapIntelligencePanel({
               key={note}
             >
               {note}
+            </p>
+          ))}
+
+          {(mineralResult?.data_notes || []).map((note) => (
+            <p
+              className="map-note mineral-data-note"
+              key={`mineral-note-${note}`}
+            >
+              Mineral: {note}
             </p>
           ))}
 
@@ -896,6 +1171,21 @@ function MapLegend({ mapData }) {
       'historical',
       'Historical ARGO',
     ],
+
+    mapData.mineralSites.length > 0 && [
+      'mineral-site',
+      'Cited mineral site',
+    ],
+
+    mapData.mineralSamples.length > 0 && [
+      'mineral-sample',
+      'Direct mineral sample',
+    ],
+
+    mapData.mineralRegions.length > 0 && [
+      'mineral-region',
+      'Approx. mineral region',
+    ],
   ].filter(Boolean)
 
   if (!entries.length) {
@@ -920,26 +1210,49 @@ function MapLegend({ mapData }) {
   )
 }
 
-function buildMapData(result) {
+function buildMapData(result, mineralResult) {
   const location = result?.location
   const state = result?.present_state
   const latest = result?.latest_argo
   const historical =
     result?.historical_context
 
+  const mineralLocation = mineralResult?.location
+
+  const mineralSites = (mineralResult?.cited_sites || [])
+    .map((site) => ({
+      site,
+      point: pointFrom(site.latitude, site.longitude),
+    }))
+    .filter((item) => item.point)
+
+  const mineralSamples = (mineralResult?.station_samples || [])
+    .map((sample) => ({
+      sample,
+      point: pointFrom(sample.latitude, sample.longitude),
+    }))
+    .filter((item) => item.point)
+
+  const mineralRegions = (mineralResult?.estimated_regions || [])
+    .map((region) => ({
+      region,
+      bounds: boundsFromMineralBox(region.bounding_box),
+    }))
+    .filter((item) => item.bounds)
+
   return {
     areaBounds:
-      location?.type === 'area'
+      (location || mineralLocation)?.type === 'area'
         ? boundsFromBox(
-            location.bounding_box,
+            (location || mineralLocation).bounding_box,
           )
         : null,
 
     requestedPoint:
-      location?.type === 'point'
+      (location || mineralLocation)?.type === 'point'
         ? pointFrom(
-            location.latitude,
-            location.longitude,
+            (location || mineralLocation).latitude,
+            (location || mineralLocation).longitude,
           )
         : null,
 
@@ -969,6 +1282,10 @@ function buildMapData(result) {
             historical.longitude,
           )
         : null,
+
+    mineralSites,
+    mineralSamples,
+    mineralRegions,
   }
 }
 
@@ -988,6 +1305,24 @@ function boundsFromBox(box) {
     [box.north, box.east],
   ]
 }
+
+function boundsFromMineralBox(box) {
+  if (
+    !box ||
+    !isFiniteNumber(box.lat_min) ||
+    !isFiniteNumber(box.lat_max) ||
+    !isFiniteNumber(box.lon_min) ||
+    !isFiniteNumber(box.lon_max)
+  ) {
+    return null
+  }
+
+  return [
+    [box.lat_min, box.lon_min],
+    [box.lat_max, box.lon_max],
+  ]
+}
+
 
 function pointFrom(
   latitude,
@@ -1258,6 +1593,54 @@ function formatStats(
         }`,
     )
     .join(' / ')
+}
+
+function formatList(values) {
+  return Array.isArray(values) && values.length
+    ? values.join(', ')
+    : null
+}
+
+function formatMineralType(value) {
+  return typeof value === 'string'
+    ? value.replaceAll('_', ' ')
+    : value
+}
+
+function formatEvidenceType(value) {
+  const labels = {
+    measured_seafloor_sample: 'Measured seafloor sample',
+    peer_reviewed_reported_site: 'Literature-reported site',
+    approximate_region_context: 'Approximate regional context',
+    none: 'No stored mineral evidence',
+  }
+
+  return labels[value] || formatMineralType(value)
+}
+
+function formatDepthRange(value) {
+  if (
+    !Array.isArray(value) ||
+    value.length < 2 ||
+    !isFiniteNumber(value[0]) ||
+    !isFiniteNumber(value[1])
+  ) {
+    return null
+  }
+
+  return `${formatNumber(value[0], 0)}-${formatNumber(value[1], 0)} m`
+}
+
+function formatPercent(value) {
+  return isFiniteNumber(value)
+    ? `${formatNumber(value, 2)}%`
+    : null
+}
+
+function formatKg(value) {
+  return isFiniteNumber(value)
+    ? `${formatNumber(value, 3)} kg`
+    : null
 }
 
 function formatTimestamp(value) {

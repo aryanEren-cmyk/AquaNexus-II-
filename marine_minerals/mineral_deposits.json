@@ -1,0 +1,206 @@
+[
+  {
+    "id": "ccz-nodules",
+    "region_name": "Clarion-Clipperton Zone",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": [
+      "nickel",
+      "copper",
+      "manganese",
+      "cobalt"
+    ],
+    "bounding_box": {
+      "lat_min": 0,
+      "lat_max": 23.5,
+      "lon_min": -160,
+      "lon_max": -115
+    },
+    "depth_range_m": [
+      3500,
+      6000
+    ],
+    "estimated_density": "high",
+    "notes": "Largest known nodule field by area and tonnage, located in the central Pacific Ocean"
+  },
+  {
+    "id": "cib-nodules",
+    "region_name": "Central Indian Ocean Basin",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": [
+      "nickel",
+      "copper",
+      "manganese",
+      "cobalt"
+    ],
+    "bounding_box": {
+      "lat_min": -16,
+      "lat_max": -10,
+      "lon_min": 74,
+      "lon_max": 79
+    },
+    "depth_range_m": [
+      3500,
+      6000
+    ],
+    "estimated_density": "moderate",
+    "notes": "Indian Ocean nodule field, smaller than CCZ but commercially notable"
+  },
+  {
+    "id": "mar-sulphides",
+    "region_name": "Mid-Atlantic Ridge",
+    "mineral_type": "polymetallic_sulphides",
+    "primary_metals": [
+      "copper",
+      "zinc",
+      "gold",
+      "silver"
+    ],
+    "bounding_box": {
+      "lat_min": -10,
+      "lat_max": 26,
+      "lon_min": -46,
+      "lon_max": -30
+    },
+    "depth_range_m": [
+      1500,
+      4000
+    ],
+    "estimated_density": "moderate",
+    "notes": "Hydrothermal vent-associated sulphide deposits along the mid-ocean ridge"
+  },
+  {
+    "id": "prime-crust-zone",
+    "region_name": "Pacific Prime Crust Zone",
+    "mineral_type": "cobalt_rich_ferromanganese_crusts",
+    "primary_metals": [
+      "cobalt",
+      "manganese",
+      "nickel",
+      "tellurium",
+      "platinum"
+    ],
+    "bounding_box": {
+      "lat_min": 0,
+      "lat_max": 20,
+      "lon_min": 150,
+      "lon_max": 180
+    },
+    "depth_range_m": [
+      400,
+      7000
+    ],
+    "estimated_density": "high",
+    "notes": "Seamount/ridge crust deposits in the western-central Pacific, highest known crust tonnage"
+  },
+  {
+    "id": "cook-islands-nodules",
+    "region_name": "Cook Islands EEZ",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": [
+      "cobalt",
+      "manganese",
+      "nickel"
+    ],
+    "bounding_box": {
+      "lat_min": -22,
+      "lat_max": -8,
+      "lon_min": -166,
+      "lon_max": -156
+    },
+    "depth_range_m": [
+      4000,
+      5500
+    ],
+    "estimated_density": "moderate",
+    "notes": "Nodule field within Cook Islands national jurisdiction, distinct from ABNJ zones"
+  },
+  {
+    "id": "carlsberg-ridge-sulphides",
+    "region_name": "Carlsberg Ridge",
+    "mineral_type": "polymetallic_sulphides",
+    "primary_metals": [
+      "copper",
+      "zinc",
+      "gold",
+      "silver"
+    ],
+    "bounding_box": {
+      "lat_min": 0,
+      "lat_max": 6,
+      "lon_min": 60,
+      "lon_max": 66
+    },
+    "depth_range_m": [
+      2000,
+      4000
+    ],
+    "estimated_density": "moderate",
+    "notes": "India's SECOND ISA exploration contract (approved ~Sept 2025, application submitted 2024), 10,000 sq km area in Carlsberg Ridge for Polymetallic Sulphides (PMS). NCPOR to begin geophysical/hydrographic surveys in 2026. India is the first country to hold two ISA PMS/PMN contracts. Falls within AquaNexus ARGO coverage region (60-100E, 0-30N)."
+  },
+  {
+    "id": "andaman-backarc-hydrothermal",
+    "region_name": "Andaman Backarc Spreading Centre (Nicobar seamounts)",
+    "mineral_type": "hydrothermal_sulphide_mineralization",
+    "primary_metals": [
+      "copper",
+      "zinc",
+      "iron",
+      "manganese"
+    ],
+    "bounding_box": {
+      "lat_min": 6.5,
+      "lat_max": 8.0,
+      "lon_min": 93.5,
+      "lon_max": 95.0
+    },
+    "depth_range_m": [
+      1500,
+      3500
+    ],
+    "estimated_density": "emerging/localized",
+    "notes": "Real 2021 RV Sindhu Sadhana survey (13 seamounts SM1-SM13) found active hydrothermal indicators (amorphous silica, barite, orpiment, chemosymbiotic Bathymodiolus) at seamount SM-13, southern Andaman volcanic arc off Nicobar Island. Falls within AquaNexus ARGO coverage region (60-100E, 0-30N)."
+  },
+  {
+    "id": "west-india-phosphorites",
+    "region_name": "Western Continental Margin of India (phosphorite zone)",
+    "mineral_type": "phosphorite_crusts_and_nodules",
+    "primary_metals": [
+      "phosphorus"
+    ],
+    "bounding_box": {
+      "lat_min": 8,
+      "lat_max": 20,
+      "lon_min": 71,
+      "lon_max": 76
+    },
+    "depth_range_m": [
+      300,
+      800
+    ],
+    "estimated_density": "documented, non-quantified",
+    "notes": "Geological Survey of India seabed surveys found ferruginous and non-ferruginous phosphorite crusts/nodules on seamounts and spurs off India's west coast (published research, e.g. Rao & Nair 1988, Rao et al. 1992 on Error Seamount, Rao et al. 2008 on Murray Ridge). Bounding box approximates the broader documented zone, not a single precise site. Falls within AquaNexus ARGO coverage region (60-100E, 0-30N)."
+  },
+  {
+    "id": "andaman-eez-nodule-trial",
+    "region_name": "Andaman Sea EEZ (Varaha-3 nodule trial zone)",
+    "mineral_type": "polymetallic_nodules",
+    "primary_metals": [
+      "nickel",
+      "cobalt",
+      "copper",
+      "manganese"
+    ],
+    "bounding_box": {
+      "lat_min": 6,
+      "lat_max": 14,
+      "lon_min": 92,
+      "lon_max": 94
+    },
+    "depth_range_m": [
+      1193,
+      1193
+    ],
+    "estimated_density": "confirmed by physical sample, exact site not publicly geolocated",
+    "notes": "October 2024: NIOT's Varaha-3 seabed mining machine conducted a successful exploratory trial in the Andaman Sea (India's EEZ, between Andaman/Nicobar Islands and Myanmar), physically collecting real polymetallic nodules (60-120mm size) from 1,193m depth. Site follows earlier GSI surveys. No news source published exact lat/lon - bounding box approximates the general Andaman EEZ trial area, not a precise geolocated point. Sources: Mongabay (Nov 2024), Indian Defence News (Oct 2024)."
+  }
+]
