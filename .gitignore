@@ -1,0 +1,11 @@
+.env
+argo/data/raw/*.nc
+argo/data/processed/*.nc
+argo/data/live/*.nc
+copernicus/data/present/*.nc
+copernicus/data/present/*.nc*
+copernicus/data/present/*.zarr/
+location/cache/locations.json
+__pycache__/
+*.pyc
+argo/data/processed/historical_profile_index.npz
