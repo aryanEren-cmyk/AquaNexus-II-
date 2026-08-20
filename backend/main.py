@@ -13,13 +13,18 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from agent.agent import run_agent
+from alerts.engine import scan_ocean_alerts
 from argo.live.live_argo import LIVE_DATA_PATH
 from argo.tools.argo_tools import (
     PROFILE_INDEX_PATH,
     get_float_profile,
     list_float_cycles,
 )
-from backend.schemas import ChatRequest, OceanConditionsRequest
+from backend.schemas import (
+    AlertScanRequest,
+    ChatRequest,
+    OceanConditionsRequest,
+)
 from copernicus.present_state import PRESENT_DATA_PATH
 from location.resolver import LocationResolverError
 from ocean.conditions import OceanConditionsError, get_ocean_conditions
@@ -176,6 +181,51 @@ def ocean_conditions(
             detail={
                 "error": "internal_error",
                 "message": "An unexpected internal error occurred.",
+            },
+        ) from exc
+
+
+# ============================================================
+# ALERTS
+# ============================================================
+
+
+@app.post("/api/alerts/scan")
+def alert_scan(
+    request: AlertScanRequest,
+) -> dict[str, Any]:
+    """
+    Generate deterministic, evidence-backed operational advisories.
+
+    Current alerts describe scientific data availability and observation
+    coverage. They are not environmental hazard warnings.
+    """
+    try:
+        return scan_ocean_alerts(
+            request.location,
+            depth_m=request.depth_m,
+            argo_radius_km=request.argo_radius_km,
+        )
+
+    except (
+        LocationResolverError,
+        OceanConditionsError,
+        ValueError,
+    ) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "bad_request",
+                "message": _safe_message(exc),
+            },
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": "Unable to generate AquaNexus alerts.",
             },
         ) from exc
 

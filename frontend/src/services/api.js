@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_AQUANEXUS_API_URL || 'http://127.0.0.1:8000'
+const API_BASE_URL =
+  import.meta.env.VITE_AQUANEXUS_API_URL || 'http://127.0.0.1:8000'
 
 export async function getHealth() {
   return request('/api/health')
@@ -11,8 +12,27 @@ export async function sendChatMessage(message) {
   })
 }
 
-export async function getOceanConditions(location, depth_m = 0, argo_radius_km = 300) {
+export async function getOceanConditions(
+  location,
+  depth_m = 0,
+  argo_radius_km = 300,
+) {
   return request('/api/ocean/conditions', {
+    method: 'POST',
+    body: JSON.stringify({
+      location,
+      depth_m,
+      argo_radius_km,
+    }),
+  })
+}
+
+export async function scanAlerts(
+  location,
+  depth_m = 0,
+  argo_radius_km = 300,
+) {
+  return request('/api/alerts/scan', {
     method: 'POST',
     body: JSON.stringify({
       location,
@@ -40,6 +60,7 @@ async function request(path, options = {}) {
   })
 
   let payload = null
+
   try {
     payload = await response.json()
   } catch {
@@ -51,7 +72,12 @@ async function request(path, options = {}) {
       payload?.detail?.message ||
       payload?.detail ||
       `Backend request failed with HTTP ${response.status}`
-    throw new Error(typeof message === 'string' ? message : 'Backend request failed')
+
+    throw new Error(
+      typeof message === 'string'
+        ? message
+        : 'Backend request failed',
+    )
   }
 
   return payload

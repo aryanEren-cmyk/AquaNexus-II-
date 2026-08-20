@@ -4,6 +4,7 @@ import { Database, FlaskConical } from 'lucide-react'
 import ChatView from './components/chat/ChatView.jsx'
 import Sidebar from './components/layout/Sidebar.jsx'
 import TopBar from './components/layout/TopBar.jsx'
+import AlertsPage from './pages/AlertsPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import DataPage from './pages/DataPage.jsx'
 import EvidencePage from './pages/EvidencePage.jsx'
@@ -14,7 +15,15 @@ import './styles/variables.css'
 import './styles/global.css'
 import './styles/components.css'
 
-const MODULES = ['Chat', 'Charts', 'Map', 'Profiles', 'Alerts', 'Evidence', 'Data']
+const MODULES = [
+  'Chat',
+  'Charts',
+  'Map',
+  'Profiles',
+  'Alerts',
+  'Evidence',
+  'Data',
+]
 
 function App() {
   const [activeModule, setActiveModule] = useState('Chat')
@@ -39,12 +48,17 @@ function App() {
             <MapPage />
           ) : activeModule === 'Profiles' ? (
             <ProfilesPage />
+          ) : activeModule === 'Alerts' ? (
+            <AlertsPage />
           ) : activeModule === 'Evidence' ? (
             <EvidencePage />
           ) : activeModule === 'Data' ? (
             <DataPage />
           ) : (
-            <section className="module-placeholder" aria-live="polite">
+            <section
+              className="module-placeholder"
+              aria-live="polite"
+            >
               <div className="placeholder-kicker">
                 <FlaskConical size={16} />
                 {activeModule}
@@ -54,7 +68,8 @@ function App() {
 
               <p>
                 This console is reserved for verified AquaNexus data products.
-                The interface will activate once the supporting backend module is ready.
+                The interface will activate once the supporting backend module
+                is ready.
               </p>
 
               <div className="placeholder-status">
