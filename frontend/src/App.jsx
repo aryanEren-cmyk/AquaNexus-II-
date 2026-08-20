@@ -5,6 +5,8 @@ import ChatView from './components/chat/ChatView.jsx'
 import Sidebar from './components/layout/Sidebar.jsx'
 import TopBar from './components/layout/TopBar.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import DataPage from './pages/DataPage.jsx'
+import EvidencePage from './pages/EvidencePage.jsx'
 import MapPage from './pages/MapPage.jsx'
 import ProfilesPage from './pages/ProfilesPage.jsx'
 
@@ -37,6 +39,10 @@ function App() {
             <MapPage />
           ) : activeModule === 'Profiles' ? (
             <ProfilesPage />
+          ) : activeModule === 'Evidence' ? (
+            <EvidencePage />
+          ) : activeModule === 'Data' ? (
+            <DataPage />
           ) : (
             <section className="module-placeholder" aria-live="polite">
               <div className="placeholder-kicker">
