@@ -107,8 +107,10 @@
 
 .workspace {
   height: calc(100vh - var(--topbar-height));
+  min-height: 0;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
 
 .sidebar {
@@ -155,6 +157,8 @@
 
 .page-surface {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   background:
     linear-gradient(rgba(28, 51, 72, 0.2) 1px, transparent 1px),
@@ -164,15 +168,24 @@
 }
 
 .chat-layout {
+  width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
 }
 
 .chat-console {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 14px;
   padding: 24px;
 }
@@ -229,21 +242,31 @@
 }
 
 .message-list {
+  min-width: 0;
   min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 2px 4px 2px 0;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
 .chat-message {
-  max-width: 780px;
+  min-width: 0;
+  max-width: min(780px, 100%);
+  box-sizing: border-box;
   align-self: flex-start;
   border: 1px solid var(--line);
   background: rgba(14, 32, 50, 0.86);
   border-radius: 8px;
   padding: 13px 14px;
+  overflow-wrap: anywhere;
 }
 
 .chat-message.is-user {
@@ -365,10 +388,39 @@
 
 .evidence-panel {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
   border-left: 1px solid var(--line);
   background: rgba(8, 20, 34, 0.94);
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.message-list::-webkit-scrollbar,
+.evidence-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-list::-webkit-scrollbar-track,
+.evidence-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.message-list::-webkit-scrollbar-thumb,
+.evidence-panel::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover,
+.evidence-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--text-mute);
 }
 
 .evidence-header {
